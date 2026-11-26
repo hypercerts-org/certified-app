@@ -136,8 +136,10 @@ function awardRkey(uri: string, actor: string): string | null {
 }
 
 /** Cache tags an endorsement of `subject` by `actor` changes. */
-function expire(actor: string, subject: string) {
+/** Refreshes what shows the endorsement: both accounts' pages and its badge's page. */
+function expire(actor: string, subject: string, definitions: (string | null | undefined)[] = []) {
   updateTag(tags.badges(actor));
+  for (const uri of new Set(definitions)) if (uri) updateTag(tags.badge(uri));
   for (const did of [actor, subject]) {
     updateTag(tags.endorsements(did));
     updateTag(tags.actor(did));
@@ -183,7 +185,7 @@ export async function endorse(input: { repo: string; subject: string }): Promise
     const indexed = await waitForIndex(
       async () => (await getIndexedEndorsement(actor, target)) !== null,
     );
-    expire(actor, target);
+    expire(actor, target, [definitionUri]);
     return { ok: true, endorsement: { uri: made.uri, cid: made.cid }, indexed };
   } catch (err) {
     return failure(failureReason(err, "endorse"), "endorse", w && !("ok" in w) ? w : undefined);
@@ -219,17 +221,18 @@ export async function unendorse(input: {
     const removed = [...new Set([...known, ...shown.map((award) => award.uri)])];
     const repo = await repositoryFor(session, actor);
     // One at a time: each is its own write, and a failure stops the rest.
+    const definitions: (string | null)[] = [];
     for (const uri of removed) {
       const rkey = awardRkey(uri, actor);
       if (!rkey) return failure("invalid", "unendorse", w);
-      await deleteBadgeAward(repo, rkey);
+      definitions.push(await deleteBadgeAward(repo, rkey));
     }
     // Done once the index shows none of the removed awards.
     const indexed = await waitForIndex(async () => {
       const left = await getIndexedEndorsements(actor, target);
       return left.every((award) => !removed.includes(award.uri));
     });
-    expire(actor, target);
+    expire(actor, target, definitions);
     return { ok: true, endorsement: null, indexed };
   } catch (err) {
     return failure(failureReason(err, "unendorse"), "unendorse", w && !("ok" in w) ? w : undefined);
@@ -297,7 +300,7 @@ export async function endorseFromWorkspace(
       writeTo(session, repo),
     );
     const indexed = await waitForIndex(() => badgeAwardIndexed(made.uri));
-    expire(repo, target);
+    expire(repo, target, [definitionUri]);
     return { ok: true, endorsement: { uri: made.uri, cid: made.cid }, indexed };
   } catch (err) {
     return failure(failureReason(err, "endorse"), "endorse", { asOrganization });
@@ -330,9 +333,9 @@ export async function revokeEndorsement(
       return failure("forbidden", "unendorse", { asOrganization });
     }
     const repository = await repositoryFor(session, repo);
-    await deleteBadgeAward(repository, rkey);
+    const definition = await deleteBadgeAward(repository, rkey);
     const indexed = await waitForIndex(async () => !(await badgeAwardIndexed(input.awardUri)));
-    expire(repo, input.subjectDid);
+    expire(repo, input.subjectDid, [definition]);
     return { ok: true, endorsement: null, indexed };
   } catch (err) {
     return failure(failureReason(err, "unendorse"), "unendorse", { asOrganization });

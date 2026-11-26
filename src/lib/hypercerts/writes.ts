@@ -664,12 +664,16 @@ async function deleteRecordIdempotent(
 }
 
 /**
- * Deletes a badge award (`app.certified.badge.award`) from `repo`. A stopgap
- * until the Hypercerts SDK supports deleting awards; safe to repeat if the
- * record is already gone.
+ * Deletes a badge award (`app.certified.badge.award`) from `repo`, returning
+ * the badge definition it awarded (null when it was already gone), whose
+ * page lists it. A stopgap until the Hypercerts SDK supports deleting awards;
+ * safe to repeat if the record is already gone.
  */
-export async function deleteBadgeAward(repo: Repository, rkey: string): Promise<void> {
-  return deleteRecordIdempotent(repo, badgeAward.$type, rkey);
+export async function deleteBadgeAward(repo: Repository, rkey: string): Promise<string | null> {
+  const award = await repo.getRecord(badgeAward.$type, rkey).catch(() => null);
+  await deleteRecordIdempotent(repo, badgeAward.$type, rkey);
+  const badge = (award?.value as { badge?: { uri?: unknown } } | undefined)?.badge;
+  return typeof badge?.uri === "string" ? badge.uri : null;
 }
 
 /**

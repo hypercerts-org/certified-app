@@ -15,7 +15,15 @@ import {
 } from "@hypercerts-org/ui-react";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useOptimistic, useState, useTransition } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useId,
+  useOptimistic,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 import { workspaceHref } from "@/lib/routes";
@@ -69,6 +77,32 @@ export function EndorsementVisibilityButton({
   );
 }
 
+/** Tells the Given list that an endorsement was revoked, so its row goes at once. */
+const RevokedContext = createContext<(awardUri: string) => void>(() => {});
+
+/**
+ * The Given tab's rows, each leaving as soon as its endorsement is revoked:
+ * the index can take longer to drop it than the action waits, and the page
+ * would otherwise show it until the index catches up. A revoked endorsement
+ * can't come back under the same URI, so hiding it here is never wrong.
+ */
+export function GivenEndorsementRows({
+  rows,
+  empty,
+}: {
+  rows: { uri: string; row: ReactNode }[];
+  empty: ReactNode;
+}) {
+  const [revoked, setRevoked] = useState<ReadonlySet<string>>(new Set());
+  const shown = rows.filter((row) => !revoked.has(row.uri));
+  if (shown.length === 0) return empty;
+  return (
+    <RevokedContext value={(uri) => setRevoked((before) => new Set(before).add(uri))}>
+      <ul className="people-list divided">{shown.map((row) => row.row)}</ul>
+    </RevokedContext>
+  );
+}
+
 /** Revoke button + confirmation dialog for an endorsement the workspace account gave. */
 export function RevokeEndorsementButton({
   repo,
@@ -81,6 +115,7 @@ export function RevokeEndorsementButton({
   subjectDid: string;
   subjectName: string;
 }) {
+  const revoked = useContext(RevokedContext);
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -98,6 +133,7 @@ export function RevokeEndorsementButton({
         return;
       }
       setConfirming(false);
+      revoked(awardUri);
       toast("Endorsement revoked");
     });
   };

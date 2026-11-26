@@ -4,16 +4,22 @@ import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { workspaceDid } from "@/components/workspace-access";
 import { NewBadge } from "@/components/workspace-badges";
 import { WorkspaceSectionHead } from "@/components/workspace-section-head";
-import { getBadges, getIssuedBadges, getRejectedBadges } from "@/lib/hypercerts/queries";
+import {
+  getAwardedBadges,
+  getBadges,
+  getRejectedBadges,
+  getYourBadges,
+} from "@/lib/hypercerts/queries";
 
-// Workspace → Badges: received ones by the account's response (awaiting
-// first: those ask for one), then the badges it defined. Each tab is its own
-// page under the tab bar; counts and rows are cached public data.
+// Workspace → Badges: those others awarded the account (Received), those it
+// awarded others (Awarded), and the badges it created to award (Your
+// badges). Each tab is its own page under the tab bar; counts and rows are
+// cached public data.
 
-const LABELS = ["Awaiting response", "Accepted", "Rejected", "Issued"];
+const LABELS = ["Received", "Awarded", "Your badges"];
 
 function tabs(base: string, counts?: number[]) {
-  const paths = ["", "/accepted", "/rejected", "/issued"];
+  const paths = ["", "/awarded", "/yours"];
   return LABELS.map((label, i) => ({
     label,
     href: `${base}${paths[i]}`,
@@ -33,16 +39,16 @@ async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
 }
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [received, rejected, issued] = await Promise.all([
+  const [received, rejected, awarded, yours] = await Promise.all([
     getBadges(did),
     getRejectedBadges(did),
-    getIssuedBadges(did),
+    getAwardedBadges(did),
+    getYourBadges(did),
   ]);
   const counts = [
-    received.awaiting.length,
-    received.accepted.length,
-    rejected.length,
-    issued.badges.length,
+    received.awaiting.length + received.accepted.length + rejected.length,
+    awarded.badges.length,
+    yours.length,
   ];
   return <ProfileTabs label="Badges" tabs={tabs(base, counts)} />;
 }

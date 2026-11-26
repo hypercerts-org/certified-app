@@ -6,7 +6,7 @@
 // (who, when, until when, the note). An expired badge stays, marked and
 // dimmed, after the ones in force.
 
-import { Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Badge, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Award, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActorLink } from "@/components/actor";
@@ -95,19 +95,29 @@ export function ProjectBadgeList({ badges }: { badges: ProjectBadge[] }) {
   );
 }
 
-/** A Badges tab's list: each badge with its type, issuer, dates, note and link. */
-export function BadgeList({
+/**
+ * A Badges tab's list: each badge with its type, issuer, dates, note and
+ * link. The workspace adds the award's state (`state`), and its Awarded tab
+ * says who each went to instead of who it came from (`who`).
+ */
+export function BadgeList<T extends BadgeCard>({
   badges,
   empty,
   emptyDescription,
   actions,
+  state,
+  who,
 }: {
-  badges: BadgeCard[];
+  badges: T[];
   /** The empty list's title ("No badges accepted yet"), and in the workspace a line on how it fills. */
   empty: string;
   emptyDescription?: string;
   /** Buttons at a row's end: the workspace's responses. */
-  actions?: (badge: BadgeCard) => ReactNode;
+  actions?: (badge: T) => ReactNode;
+  /** The award's state as a tag ("Awaiting your response"), or null for none. */
+  state?: (badge: T) => string | null;
+  /** The meta line's start; "From" its issuer otherwise. */
+  who?: (badge: T) => ReactNode;
 }) {
   if (badges.length === 0)
     return <Empty icon={Award} title={empty} description={emptyDescription} />;
@@ -123,9 +133,16 @@ export function BadgeList({
               </IntentLink>
               {badge.type && <span className="badge-type">{badge.type}</span>}
               {badge.expired && <span className="badge-type">Expired</span>}
+              {state?.(badge) && <Badge variant="tag">{state(badge)}</Badge>}
             </p>
             <p className="badge-meta">
-              From <Issuer badge={badge} />
+              {who ? (
+                who(badge)
+              ) : (
+                <>
+                  From <Issuer badge={badge} />
+                </>
+              )}
               {badge.awarded && ` · ${badge.awarded}`}
               {badge.validUntil &&
                 (badge.expired
@@ -173,12 +190,18 @@ const holdersLabel = (n: number) => `${numberFormat.format(n)} ${n === 1 ? "hold
 export function IssuedBadgeList({
   badges,
   actions,
+  empty = "No badges issued yet",
+  emptyDescription,
 }: {
   badges: IssuedBadge[];
   /** Buttons at a row's end (such as Award in the workspace). */
   actions?: (badge: IssuedBadge) => ReactNode;
+  /** The empty list's title, and in the workspace a line on how it fills. */
+  empty?: string;
+  emptyDescription?: string;
 }) {
-  if (badges.length === 0) return <Empty icon={Award} title="No badges issued yet" />;
+  if (badges.length === 0)
+    return <Empty icon={Award} title={empty} description={emptyDescription} />;
   return (
     <ul className="badge-list divided">
       {badges.map((badge) => (

@@ -277,25 +277,43 @@ describe("deleteBadgeAward", () => {
     const repo = await organizationRepository(session, org);
     await deleteBadgeAward(repo, "3k2a4b5c");
 
-    expect(requests).toHaveLength(1);
-    expect(requests[0].url).toBe(
+    // The award is read first (for its badge), then deleted through CGS.
+    const deletes = requests.filter((request) => request.url.startsWith("https://groups."));
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].url).toBe(
       "https://groups.certified.app/xrpc/app.certified.group.repo.deleteRecord",
     );
     expect(minted.map((url) => url.searchParams.get("lxm"))).toEqual([
       "app.certified.group.repo.deleteRecord",
     ]);
-    expect(await requests[0].json()).toEqual({
+    expect(await deletes[0].json()).toEqual({
       repo: org,
       collection: "app.certified.badge.award",
       rkey: "3k2a4b5c",
     });
   });
 
+  it("returns the badge definition the deleted award pointed at", async () => {
+    const badge = `at://${org}/app.certified.badge.definition/def1`;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      return request.url.startsWith(ORG_PDS)
+        ? Response.json({
+            uri: `at://${org}/app.certified.badge.award/3k2a4b5c`,
+            cid: CURRENT_CID,
+            value: { badge: { uri: badge, cid: CURRENT_CID } },
+          })
+        : Response.json({});
+    });
+    const repo = await organizationRepository(fakeSession(), org);
+    expect(await deleteBadgeAward(repo, "3k2a4b5c")).toBe(badge);
+  });
+
   it("treats an already-deleted award (RecordNotFound) as a no-op", async () => {
     const session = fakeSession(() =>
       Response.json({ error: "RecordNotFound", message: "missing" }, { status: 400 }),
     );
-    await expect(deleteBadgeAward(ownRepository(session), "3k2a4b5c")).resolves.toBeUndefined();
+    await expect(deleteBadgeAward(ownRepository(session), "3k2a4b5c")).resolves.toBeNull();
   });
 
   it("maps CGS 403 to forbidden and 5xx to unknown", async () => {
@@ -320,7 +338,7 @@ describe("deleteBadgeAward", () => {
         : Response.json({ error: "Forbidden" }, { status: 403 });
     });
     const repo = await organizationRepository(fakeSession(), org);
-    await expect(deleteBadgeAward(repo, "gone")).resolves.toBeUndefined();
+    await expect(deleteBadgeAward(repo, "gone")).resolves.toBeNull();
     await expect(deleteCollectionRecord(repo, "gone")).resolves.toBeUndefined();
   });
 });

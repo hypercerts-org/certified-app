@@ -11,6 +11,7 @@ import { Empty } from "@/components/empty";
 import {
   EndorsementVisibilityButton,
   EndorseSomeoneDialog,
+  GivenEndorsementRows,
   RevokeEndorsementButton,
 } from "@/components/endorsement-controls";
 import { PeopleListSkeleton } from "@/components/people-list";
@@ -90,35 +91,38 @@ export function ReceivedEndorsements({
   );
 }
 
-/** Endorsements the account gave. */
+/** Endorsements the account gave, each row going as soon as it is revoked. */
 export function GivenEndorsements({ repo, page }: { repo: string; page: PeoplePage }) {
-  if (page.rows.length === 0) {
-    return (
-      <Empty
-        icon={ThumbsUp}
-        title="No endorsements given yet"
-        description="Accounts you endorse show here."
-      />
-    );
-  }
+  const empty = (
+    <Empty
+      icon={ThumbsUp}
+      title="No endorsements given yet"
+      description="Accounts you endorse show here."
+    />
+  );
+  if (page.rows.length === 0) return empty;
   return (
     <>
-      <ul className="people-list divided">
-        {page.rows.map((row) => (
-          <Row
-            key={row.uri}
-            row={row}
-            action={
-              <RevokeEndorsementButton
-                repo={repo}
-                awardUri={row.uri}
-                subjectDid={row.actor.did}
-                subjectName={nameOf(row.actor)}
-              />
-            }
-          />
-        ))}
-      </ul>
+      <GivenEndorsementRows
+        empty={empty}
+        rows={page.rows.map((row) => ({
+          uri: row.uri,
+          row: (
+            <Row
+              key={row.uri}
+              row={row}
+              action={
+                <RevokeEndorsementButton
+                  repo={repo}
+                  awardUri={row.uri}
+                  subjectDid={row.actor.did}
+                  subjectName={nameOf(row.actor)}
+                />
+              }
+            />
+          ),
+        }))}
+      />
       <More page={page} />
     </>
   );

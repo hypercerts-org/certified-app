@@ -1,8 +1,9 @@
 "use client";
 
 // Workspace → Badges interactive controls: accepting/rejecting received badges,
-// creating a new badge definition (with optional icon upload), and awarding an
-// issued badge to an account or record.
+// creating a badge (a definition, with optional icon upload), and awarding one
+// of the account's badges to an account or record. Creating opens Your
+// badges, and awarding opens Awarded, where the result shows.
 
 import {
   Banner,
@@ -22,9 +23,11 @@ import {
   toISODate,
 } from "@hypercerts-org/ui-react";
 import { Award, Plus, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import * as badgeActions from "@/lib/hypercerts/badge-actions";
+import { workspaceHref } from "@/lib/routes";
 
 const BADGE_TYPES = [
   { value: "certification", label: "Certification" },
@@ -103,8 +106,9 @@ export function BadgeResponseButtons({
   );
 }
 
-/** "New badge": creates an `app.certified.badge.definition` via the Hypercerts SDK. */
+/** "Create badge": creates an `app.certified.badge.definition` via the Hypercerts SDK. */
 export function NewBadgeDialog({ repo }: { repo: string }) {
+  const router = useRouter();
   const formId = useId();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -165,6 +169,7 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
       setOpen(false);
       reset();
       toast("Badge created");
+      router.push(`${workspaceHref(repo)}/badges/yours`);
     } finally {
       setSubmitting(false);
     }
@@ -182,13 +187,13 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
         }}
       >
         <Plus size={16} aria-hidden />
-        New badge
+        Create badge
       </Button>
       <ResponsiveDialog
         open={open}
         onClose={close}
-        title="New badge"
-        description="Define a badge you can award to accounts, projects, or activities."
+        title="Create badge"
+        description="A badge you can award to accounts, projects, or activities. Each recipient chooses whether to accept it."
         footer={
           <>
             <Button variant="secondary" disabled={submitting} onClick={close}>
@@ -334,6 +339,7 @@ export function AwardBadgeDialog({
   definitionUri: string;
   badgeTitle: string;
 }) {
+  const router = useRouter();
   const formId = useId();
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
@@ -384,6 +390,7 @@ export function AwardBadgeDialog({
       setOpen(false);
       reset();
       toast(`Awarded "${badgeTitle}"`);
+      router.push(`${workspaceHref(repo)}/badges/awarded`);
     } finally {
       setSubmitting(false);
     }
