@@ -2,9 +2,10 @@
 
 import { UIProvider } from "@hypercerts-org/ui-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { Toaster } from "sonner";
 import { IntentLink } from "@/components/intent-link";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { ThemeSync } from "@/components/theme-control";
 
 // TanStack Query: "load more" lists, the write overlay's index polling and
@@ -25,6 +26,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={getQueryClient()}>
       <UIProvider link={IntentLink}>
         <ThemeSync />
+        <Suspense fallback={null}>
+          <ScrollToTop />
+        </Suspense>
         {children}
         {/* Above the phone tab bar, which covers the bottom 3.5rem. */}
         <Toaster
