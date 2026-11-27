@@ -1305,7 +1305,10 @@ export async function getYourBadges(did: string): Promise<IssuedBadge[]> {
   );
 }
 
-/** A badge definition, or null when there is none at `uri`. */
+/**
+ * A badge definition, or null when there is none at `uri`. Its issuer's card
+ * comes as the API has it, without a handle (AuthorLink streams that in).
+ */
 export async function getBadge(uri: string): Promise<BadgeDetail | null> {
   "use cache";
   publicData(tags.badge(uri));
@@ -1315,10 +1318,7 @@ export async function getBadge(uri: string): Promise<BadgeDetail | null> {
     ...read(),
   });
   if (result.success) {
-    const badge = toBadgeDetail(result.body.badgeDefinition);
-    if (!badge) return null;
-    const [issuer] = await withHandles([badge.issuer]);
-    return { ...badge, issuer };
+    return toBadgeDetail(result.body.badgeDefinition);
   }
   if (notFound(result)) return null;
   throw result;
