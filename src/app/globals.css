@@ -1486,9 +1486,17 @@ button.menu-row:disabled:not([aria-current]) {
 }
 
 /* The tabs share the column's width, as on X (and scroll when they can't). */
+/* A page's tabs share its column, each as wide as it needs and the room left
+   spread between them. Every tab shows (none hidden while empty), so they sit
+   close: eight fit beside the profile's rail. */
+.page-main > .profile-tabs {
+  gap: 0;
+}
+
 .page-main > .profile-tabs .profile-tab {
   flex: 1 0 auto;
   justify-content: center;
+  padding-inline: var(--space-2);
 }
 
 /* Overview: About, then the feed, card after card. */
@@ -3494,6 +3502,12 @@ a.badge-title:hover {
 
 .skeleton-lead {
   max-inline-size: 36rem;
+}
+
+/* The Handle row's value while it is checked (profile rail): one line of text. */
+.skeleton-handle {
+  inline-size: min(12rem, 80%);
+  block-size: 1lh;
 }
 
 .skeleton-heading {

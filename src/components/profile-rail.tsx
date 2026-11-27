@@ -121,6 +121,18 @@ async function HandleFact({ did }: { did: string }) {
   );
 }
 
+/** The Handle row while it is checked: its label, and a line where it goes. */
+function HandleFactSkeleton() {
+  return (
+    <div className="fact">
+      <dt>Handle</dt>
+      <dd>
+        <Skeleton variant="line" className="skeleton-handle" />
+      </dd>
+    </div>
+  );
+}
+
 /**
  * From the account as the API has it (getActorCore); the place and the
  * handle need outside lookups and stream in.
@@ -156,7 +168,7 @@ export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string 
               <dd>{actor.joined}</dd>
             </div>
           )}
-          <Suspense fallback={null}>
+          <Suspense fallback={<HandleFactSkeleton />}>
             <HandleFact did={did} />
           </Suspense>
           <div className="fact">

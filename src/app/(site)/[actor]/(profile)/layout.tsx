@@ -1,20 +1,10 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { type ProfileTab, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { ProfileAddress } from "@/components/profile-address";
 import { ProfileHeader, ProfileHeaderSkeleton } from "@/components/profile-header";
 import { ProfileRail, ProfileRailSkeleton } from "@/components/profile-rail";
-import {
-  type Count,
-  getActorCore,
-  getBadges,
-  getEndorsements,
-  getFollowCounts,
-  getIssuedBadges,
-  getProjectBadges,
-  getRecordCounts,
-  hasFunding,
-} from "@/lib/hypercerts/queries";
+import { getActorCore } from "@/lib/hypercerts/queries";
 import { canonicalProfileBase, profileBase } from "@/lib/profile-route";
 
 // A public profile: the header, then its pages as tabs beside its facts. Each tab is its own
@@ -42,15 +32,7 @@ async function Header({ params }: { params: Promise<{ actor: string }> }) {
 
 /** The tabs, over the left column: they switch what it shows. */
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
-  const id = (await params).actor;
-  const actor = await getActorCore(decodeURIComponent(id));
-  if (!actor) return null;
-  const base = profileBase(id);
-  return (
-    <Suspense fallback={<Tabs base={base} />}>
-      <TabsWithCounts did={actor.did} base={base} />
-    </Suspense>
-  );
+  return <Tabs base={profileBase((await params).actor)} />;
 }
 
 /** The right column, the same on every tab. */
@@ -68,123 +50,38 @@ async function Address({ params }: { params: Promise<{ actor: string }> }) {
   return to ? <ProfileAddress from={profileBase(id)} to={to} /> : null;
 }
 
-const value = (count: Count | number) => (typeof count === "number" ? count : count.value);
-
-type TabCounts = {
-  activities: Count;
-  projects: Count;
-  endorsementsReceived: number;
-  endorsementsGiven: number;
-  followers: number;
-  following: number;
-  lists: Count;
-  badgesAccepted: number;
-  badgesAwaiting: number;
-  badgesIssued: number;
-  /** Badges the account's projects received. */
-  badgesForProjects: number;
-  /** Whether the account received or gave any funding. */
-  funding: boolean;
-};
+const TABS = [
+  { label: "Overview", path: "", also: [] },
+  { label: "Activities", path: "/activities", also: [] },
+  { label: "Projects", path: "/projects", also: [] },
+  { label: "Endorsements", path: "/endorsements", also: ["/endorsements/given"] },
+  { label: "Followers", path: "/followers", also: ["/following"] },
+  {
+    label: "Badges",
+    path: "/badges",
+    also: ["/badges/awaiting", "/badges/projects", "/badges/issued"],
+  },
+  { label: "Lists", path: "/lists", also: [], nested: true },
+  { label: "Funding", path: "/funding", also: ["/funding/given", "/funding/confirmed"] },
+] as const;
 
 /**
- * Overview always; the others once their counts are known, and only when not
- * empty. The tabs carry no numbers: several hold lists of their own (received
- * and given, followers and following), so one number on the tab misleads, and
- * the header already says how many follow and who endorsed.
+ * Every tab, from the address alone: nothing to look up, so they show with
+ * the page. A tab's page loads when the pointer or focus is on it (IntentLink
+ * in ProfileTabs); one with nothing in it says so. The tabs carry no
+ * numbers: several hold lists of their own (received and given, followers
+ * and following), so one number on the tab misleads.
  */
-function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
-  const tab = (
-    label: string,
-    path: string,
-    count?: Count | number,
-    also?: string[],
-    empty = count === undefined || value(count) === 0,
-  ) =>
-    ({
-      label,
-      href: `${base}${path}`,
-      also: also?.map((sub) => `${base}${sub}`),
-      empty,
-    }) satisfies ProfileTab;
+function Tabs({ base }: { base: string }) {
   return (
     <ProfileTabs
       label="Profile"
-      tabs={[
-        { label: "Overview", href: base },
-        tab("Activities", "/activities", counts?.activities),
-        tab("Projects", "/projects", counts?.projects),
-        // Counts endorsements received, and shows while either list has one.
-        tab(
-          "Endorsements",
-          "/endorsements",
-          counts?.endorsementsReceived,
-          ["/endorsements/given"],
-          !counts || counts.endorsementsReceived + counts.endorsementsGiven === 0,
-        ),
-        // Counts followers, and shows while either list has someone in it.
-        tab(
-          "Followers",
-          "/followers",
-          counts?.followers,
-          ["/following"],
-          !counts || counts.followers + counts.following === 0,
-        ),
-        // Counts accepted badges, and shows while any of its lists has one
-        // (an issuer may hold none).
-        tab(
-          "Badges",
-          "/badges",
-          counts?.badgesAccepted,
-          ["/badges/awaiting", "/badges/projects", "/badges/issued"],
-          !counts ||
-            counts.badgesAccepted +
-              counts.badgesAwaiting +
-              counts.badgesForProjects +
-              counts.badgesIssued ===
-              0,
-        ),
-        { ...tab("Lists", "/lists", counts?.lists), nested: true },
-        // No count: totals are in several currencies (the tab shows them).
-        {
-          label: "Funding",
-          href: `${base}/funding`,
-          also: [`${base}/funding/given`, `${base}/funding/confirmed`],
-          empty: !counts?.funding,
-        },
-      ]}
-    />
-  );
-}
-
-async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [records, endorsements, follows, badges, issued, projectBadges, funding] =
-    await Promise.all([
-      getRecordCounts(did),
-      getEndorsements(did),
-      getFollowCounts(did),
-      getBadges(did),
-      getIssuedBadges(did),
-      getProjectBadges(did),
-      hasFunding(did),
-    ]);
-  return (
-    <Tabs
-      base={base}
-      counts={{
-        activities: records.activities,
-        projects: records.projects,
-        endorsementsReceived: endorsements.receivedCount,
-        endorsementsGiven: endorsements.given,
-        followers: follows.followers,
-        following: follows.following,
-        lists: records.lists,
-        badgesAccepted: badges.accepted.length,
-        badgesAwaiting: badges.awaiting.length,
-        badgesIssued: issued.badges.length,
-        badgesForProjects: projectBadges.badges.length,
-        funding: funding.received || funding.given || funding.confirmed,
-      }}
+      tabs={TABS.map((tab) => ({
+        label: tab.label,
+        href: `${base}${tab.path}`,
+        also: tab.also.map((sub) => `${base}${sub}`),
+        nested: "nested" in tab ? tab.nested : undefined,
+      }))}
     />
   );
 }
@@ -203,7 +100,7 @@ export default function ProfileLayout({ children, params }: LayoutProps<"/[actor
       </Suspense>
       <div className="page-columns">
         <div className="page-main">
-          <Suspense fallback={<ProfileTabsSkeleton labels={["Overview"]} />}>
+          <Suspense fallback={<ProfileTabsSkeleton labels={TABS.map((tab) => tab.label)} />}>
             <Nav params={params} />
           </Suspense>
           {children}

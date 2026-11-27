@@ -1,8 +1,9 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
-import { getActor, getActorCore } from "@/lib/hypercerts/queries";
+import { getActorCore } from "@/lib/hypercerts/queries";
 import type { ActorDetail } from "@/lib/hypercerts/views";
+import { checkHandle } from "@/lib/identity";
 
 // Profiles live at their handle (`/hypercerts.org`), the address people share.
 // The app's own links go there directly (account cards carry verified
@@ -41,11 +42,14 @@ export async function profileActor(
  */
 export async function canonicalProfileBase(param: string): Promise<string | null> {
   const id = decodeURIComponent(param);
-  const actor = await getActor(id);
+  const actor = await getActorCore(id);
   if (!actor) return null;
-  if (id.startsWith("did:")) return actor.handle ? `/${actor.handle}` : null;
+  // A check that failed or timed out says nothing: the page stays where it is.
+  const handle = await checkHandle(actor.did).catch(() => undefined);
+  if (handle === undefined) return null;
+  if (id.startsWith("did:")) return handle ? `/${handle}` : null;
   // The API resolves a handle one way only: anyone can point their domain
   // at someone else's DID. A profile stays only at a handle verified both
   // ways (or its DID), never at the borrowed name.
-  return actor.handle === id.toLowerCase() ? null : `/${actor.handle ?? actor.did}`;
+  return handle === id.toLowerCase() ? null : `/${handle ?? actor.did}`;
 }

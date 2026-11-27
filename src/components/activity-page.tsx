@@ -9,15 +9,15 @@ import { Eyebrow, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { identityOf } from "@/components/actor";
-import { actorHref } from "@/components/cards";
 import { AuthorLink } from "@/components/author-link";
+import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { RecordActions } from "@/components/record-actions";
 import { PartOf } from "@/components/record-context";
 import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { TileSlot } from "@/components/tile-slot";
-import { didOfSegment, getActivityRecord, getRecordBadges } from "@/lib/hypercerts/queries";
+import { didOfSegment, getActivityRecord } from "@/lib/hypercerts/queries";
 import type { Contributor } from "@/lib/hypercerts/views";
 
 export type ActivityParams = Promise<{ actor: string; rkey: string }>;
@@ -51,28 +51,26 @@ const TABS = [
   { label: "Funding", path: "/funding" },
 ] as const;
 
-/** The tabs, without numbers. Contributors and Badges show only when it has some. */
+/**
+ * Every tab, from the address alone, so they show with the page; a tab's
+ * page loads on hover or focus (ProfileTabs). No numbers.
+ */
 export async function ActivityTabs({ params }: { params: ActivityParams }) {
-  const { activity, uri, base } = await activityFrom(params);
-  const badges = await getRecordBadges(uri);
-  const empty: Record<string, boolean> = {
-    "/contributors": activity.contributors.length === 0,
-    "/badges": badges.length === 0,
-  };
+  const { actor, rkey } = await params;
+  const base = `/${decodeURIComponent(actor)}/activity/${rkey}`;
   return (
     <ProfileTabs
       label="Activity"
       tabs={TABS.map((tab) => ({
         label: tab.label,
         href: `${base}${tab.path}`,
-        empty: empty[tab.path] ?? false,
       }))}
     />
   );
 }
 
 export function ActivityTabsSkeleton() {
-  return <ProfileTabsSkeleton labels={["Overview"]} />;
+  return <ProfileTabsSkeleton labels={TABS.map((tab) => tab.label)} />;
 }
 
 /** The column beside every tab: figures, the projects it is part of, what identifies it. */

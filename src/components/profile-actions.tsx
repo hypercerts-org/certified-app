@@ -20,11 +20,11 @@ import {
   ThumbsUp,
   UserPlus,
 } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { Suspense, use, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { AddToListDialog } from "@/components/add-to-list-dialog";
+import { IntentLink } from "@/components/intent-link";
 import { LinkPending } from "@/components/link-pending";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 import * as followActions from "@/lib/hypercerts/follow-actions";
@@ -144,9 +144,40 @@ function FollowButton({
 }
 
 /**
+ * A record the page passes as it is, or still on its way (a promise the
+ * server streams in, so the button doesn't wait for it).
+ */
+type Streamed<T> = T | Promise<T>;
+
+const isPromise = <T,>(value: Streamed<T>): value is Promise<T> =>
+  typeof (value as Promise<T> | null)?.then === "function";
+
+/** Follow, before it is known who is viewing or whether they follow: shown, inert. */
+function FollowShape() {
+  return (
+    <Button variant="primary" size="sm">
+      <UserPlus size={16} aria-hidden />
+      Follow
+    </Button>
+  );
+}
+
+function StreamedFollowButton({
+  follow,
+  ...props
+}: {
+  repo: string;
+  subject: string;
+  follow: Promise<FollowRef | null>;
+}) {
+  return <FollowButton {...props} rendered={use(follow)} />;
+}
+
+/**
  * Follow for whoever visits: as `actor`, the account they act as, with its
  * `follow` of `subject` if any; signed out (`actor` null), it leads to
- * signing in and back to `path`.
+ * signing in and back to `path`. Until the page knows who is viewing
+ * (`actor` undefined) or whether they follow, the button shows, inert.
  */
 export function FollowControl({
   subject,
@@ -156,10 +187,20 @@ export function FollowControl({
 }: {
   subject: string;
   path: string;
-  actor: string | null;
-  follow: FollowRef | null;
+  actor: string | null | undefined;
+  follow: Streamed<FollowRef | null>;
 }) {
-  if (actor) return <FollowButton key={actor} repo={actor} subject={subject} rendered={follow} />;
+  if (actor === undefined) return <FollowShape />;
+  if (actor && isPromise(follow)) {
+    return (
+      <Suspense fallback={<FollowShape />}>
+        <StreamedFollowButton key={actor} repo={actor} subject={subject} follow={follow} />
+      </Suspense>
+    );
+  }
+  if (actor && !isPromise(follow)) {
+    return <FollowButton key={actor} repo={actor} subject={subject} rendered={follow} />;
+  }
   return (
     <Button href={signInHref(path)} variant="primary" size="sm">
       <UserPlus size={16} aria-hidden />
@@ -224,10 +265,31 @@ function EndorseButton({
   );
 }
 
+/** Endorse, before it is known who is viewing or whether they endorsed: shown, inert. */
+function EndorseShape() {
+  return (
+    <Button variant="secondary" size="sm">
+      <ThumbsUp size={16} aria-hidden />
+      Endorse
+    </Button>
+  );
+}
+
+function StreamedEndorseButton({
+  endorsement,
+  ...props
+}: {
+  repo: string;
+  subject: string;
+  endorsement: Promise<EndorsementRef | null>;
+}) {
+  return <EndorseButton {...props} rendered={use(endorsement)} />;
+}
+
 /**
  * Endorse for whoever visits: as `actor`, the account they act as, with its
  * plain `endorsement` of `subject` if any; signed out (`actor` null), it leads
- * to signing in and back to `path`.
+ * to signing in and back to `path`. Inert until both are known, like Follow.
  */
 export function EndorseControl({
   subject,
@@ -237,11 +299,25 @@ export function EndorseControl({
 }: {
   subject: string;
   path: string;
-  actor: string | null;
-  endorsement: EndorsementRef | null;
+  actor: string | null | undefined;
+  endorsement: Streamed<EndorsementRef | null>;
 }) {
-  if (actor)
+  if (actor === undefined) return <EndorseShape />;
+  if (actor && isPromise(endorsement)) {
+    return (
+      <Suspense fallback={<EndorseShape />}>
+        <StreamedEndorseButton
+          key={actor}
+          repo={actor}
+          subject={subject}
+          endorsement={endorsement}
+        />
+      </Suspense>
+    );
+  }
+  if (actor && !isPromise(endorsement)) {
     return <EndorseButton key={actor} repo={actor} subject={subject} rendered={endorsement} />;
+  }
   return (
     <Button href={signInHref(path)} variant="secondary" size="sm">
       <ThumbsUp size={16} aria-hidden />
@@ -252,12 +328,12 @@ export function EndorseControl({
 
 /**
  * A visitor's actions: Follow and Endorse (signed out, each leads to signing
- * in), Share and More. `actor` is the account the visitor acts as, `follow`
- * and `endorsement` its records for this account, if any.
+ * in), Share and More. `actor` is the account the visitor acts as (undefined
+ * while the page doesn't know yet: the buttons show, inert), `follow` and
+ * `endorsement` its records for this account, if any, or on their way.
  */
 export function VisitorActions({
   did,
-  handle,
   path,
   title,
   actor,
@@ -265,19 +341,16 @@ export function VisitorActions({
   endorsement,
 }: {
   did: string;
-  handle?: string | null;
   path: string;
   title: string;
-  actor: string | null;
-  follow: FollowRef | null;
-  endorsement: EndorsementRef | null;
+  actor: string | null | undefined;
+  follow: Streamed<FollowRef | null>;
+  endorsement: Streamed<EndorsementRef | null>;
 }) {
   const router = useRouter();
   const [listOpen, setListOpen] = useState(false);
-  const blueskyUrl =
-    handle && !handle.startsWith("did:")
-      ? `https://bsky.app/profile/${encodeURIComponent(handle)}`
-      : null;
+  // Bluesky opens a profile by its DID as well as by its handle.
+  const blueskyUrl = `https://bsky.app/profile/${encodeURIComponent(did)}`;
 
   return (
     <>
@@ -293,11 +366,8 @@ export function VisitorActions({
         <MenuContent label="More actions" align="end">
           <MenuItem
             onClick={() => {
-              if (!actor) {
-                router.push(signInHref(path));
-                return;
-              }
-              setListOpen(true);
+              if (actor === null) router.push(signInHref(path));
+              else if (actor) setListOpen(true);
             }}
           >
             <ListPlus size={16} aria-hidden />
@@ -307,12 +377,10 @@ export function VisitorActions({
             <Copy size={16} aria-hidden />
             Copy Permanent ID
           </MenuItem>
-          {blueskyUrl && (
-            <MenuItem onClick={() => window.open(blueskyUrl, "_blank", "noopener,noreferrer")}>
-              <ExternalLink size={16} aria-hidden />
-              Open on Bluesky
-            </MenuItem>
-          )}
+          <MenuItem onClick={() => window.open(blueskyUrl, "_blank", "noopener,noreferrer")}>
+            <ExternalLink size={16} aria-hidden />
+            Open on Bluesky
+          </MenuItem>
         </MenuContent>
       </Menu>
       {actor && (
@@ -361,8 +429,6 @@ export type ProfileTab = {
   count?: string;
   /** Other paths this tab is current on (Following under Followers). */
   also?: string[];
-  /** Known to be empty: left out, unless it is the page open. */
-  empty?: boolean;
   /** Also current on the pages below it (a list under Lists). */
   nested?: boolean;
 };
@@ -405,21 +471,20 @@ export function ProfileTabs({
       aria-label={label}
       className={variant === "tabs" ? "profile-tabs" : "segmented-links"}
     >
-      {tabs
-        .filter((tab) => !tab.empty || current(tab))
-        .map((tab) => (
-          <Link
-            prefetch
-            key={tab.href}
-            href={tab.href}
-            className={variant === "tabs" ? "profile-tab" : "segmented-link"}
-            aria-current={current(tab) ? "page" : undefined}
-          >
-            {tab.label}
-            {tab.count !== undefined && <span className="profile-tab-count">{tab.count}</span>}
-            <LinkPending />
-          </Link>
-        ))}
+      {/* A tab's page loads when the pointer or focus is on it, not with
+          this one: eight tabs' worth of lists would compete with the page. */}
+      {tabs.map((tab) => (
+        <IntentLink
+          key={tab.href}
+          href={tab.href}
+          className={variant === "tabs" ? "profile-tab" : "segmented-link"}
+          aria-current={current(tab) ? "page" : undefined}
+        >
+          {tab.label}
+          {tab.count !== undefined && <span className="profile-tab-count">{tab.count}</span>}
+          <LinkPending />
+        </IntentLink>
+      ))}
     </nav>
   );
 }

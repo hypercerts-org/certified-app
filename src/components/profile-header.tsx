@@ -6,16 +6,15 @@
 
 import { Avatar, AvatarStack, ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Eye, Link2, Mail } from "lucide-react";
-import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { ActorName, avatarOf } from "@/components/actor";
 import { AlsoOnRow } from "@/components/also-on";
+import { IntentLink } from "@/components/intent-link";
 import { PageTitle } from "@/components/page-title";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
 import { getAlsoOn } from "@/lib/also-on";
-import { getHandle } from "@/lib/identity";
 import { getUser } from "@/lib/auth/dal";
 import {
   getActorPlace,
@@ -25,6 +24,7 @@ import {
   getFollowCounts,
 } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 import { mayEditAccount } from "@/lib/memberships";
 import { groupSettingsHref } from "@/lib/routes";
 
@@ -265,14 +265,23 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
               links={accountLinks}
             />
           </Suspense>
-          <Suspense fallback={null}>
-            <TrustLine did={actor.did} base={base} />
-          </Suspense>
+          <TrustLine did={actor.did} base={base} />
         </div>
         <div className="profile-actions">
           {/* Who is viewing decides the actions; the rest of the page stays
               cached for everyone. */}
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={
+              <VisitorActions
+                did={actor.did}
+                path={base}
+                title={nameOf(actor)}
+                actor={undefined}
+                follow={null}
+                endorsement={null}
+              />
+            }
+          >
             <ViewerActions actor={actor} base={base} />
           </Suspense>
         </div>
@@ -281,37 +290,32 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
   );
 }
 
-/** Share uses the profile's own address: its handle, where it has one. */
+/**
+ * Who is viewing decides the actions. The buttons don't wait for whether
+ * they follow or endorse (those stream into them), nor for the handle: Share
+ * uses the page's address.
+ */
 async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string }) {
   const actingAs = await getActingAs();
+  const title = nameOf(actor);
   if (actingAs === actor.did) {
     // Acting as an organization, only its admins and owners may edit it.
-    const [canEdit, user, handle] = await Promise.all([
-      mayEditAccount(actor.did),
-      getUser(),
-      getHandle(actor.did),
-    ]);
+    const [canEdit, user] = await Promise.all([mayEditAccount(actor.did), getUser()]);
     const editHref = canEdit
       ? user?.did === actor.did
         ? "/settings/profile"
         : `${groupSettingsHref(actor.did)}/profile`
       : null;
-    return <OwnerActions editHref={editHref} path={base} title={nameOf({ ...actor, handle })} />;
+    return <OwnerActions editHref={editHref} path={base} title={title} />;
   }
-  const [follow, endorsement, handle] = await Promise.all([
-    actingAs ? getFollow(actingAs, actor.did) : null,
-    actingAs ? getEndorsement(actingAs, actor.did) : null,
-    getHandle(actor.did),
-  ]);
   return (
     <VisitorActions
       did={actor.did}
-      handle={handle}
       path={base}
-      title={nameOf({ ...actor, handle })}
+      title={title}
       actor={actingAs}
-      follow={follow}
-      endorsement={endorsement}
+      follow={actingAs ? getFollow(actingAs, actor.did) : null}
+      endorsement={actingAs ? getEndorsement(actingAs, actor.did) : null}
     />
   );
 }
@@ -364,44 +368,54 @@ function endorserNames(endorsers: ActorCard[], more: boolean): ReactNode {
 /**
  * Who endorsed the account (faces and names), then its followers and whom it
  * follows, each leading to its tab. Parts with nothing in them are left out.
+ * Each part comes on its own: the follow counts are quick, the endorsers may
+ * take longer.
  */
-async function TrustLine({ did, base }: { did: string; base: string }) {
-  const [{ endorsers, more }, counts] = await Promise.all([
-    getEndorsers(did),
-    getFollowCounts(did),
-  ]);
-  const { followers, following } = counts;
+function TrustLine({ did, base }: { did: string; base: string }) {
   return (
     // Empty (hidden) when there is nothing to show this viewer.
     <div className="trust-line">
-      {/* Endorsements and follows only when there are some: an absence says nothing here. */}
-      {endorsers.length > 0 && (
-        <Link prefetch href={`${base}/endorsements`} className="trust-endorsed">
-          <AvatarStack
-            avatars={endorsers.map(avatarOf)}
-            total={endorsers.length + (more ? 1 : 0)}
-          />
-          <span>Endorsed by {endorserNames(endorsers, more)}</span>
-        </Link>
-      )}
-      {/* On one line with the endorsements, as staging has it. */}
-      {(followers > 0 || following > 0) && (
-        <p className="trust-counts">
-          {followers > 0 && (
-            <Link prefetch href={`${base}/followers`} className="trust-count">
-              <strong>{numberFormat.format(followers)}</strong>
-              {followers === 1 ? " follower" : " followers"}
-            </Link>
-          )}
-          {followers > 0 && following > 0 && <span aria-hidden> · </span>}
-          {following > 0 && (
-            <Link prefetch href={`${base}/following`} className="trust-count">
-              <strong>{numberFormat.format(following)}</strong> following
-            </Link>
-          )}
-        </p>
-      )}
+      <Suspense fallback={null}>
+        <Endorsed did={did} base={base} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <FollowCounts did={did} base={base} />
+      </Suspense>
     </div>
+  );
+}
+
+/** Endorsements only when there are some: an absence says nothing here. */
+async function Endorsed({ did, base }: { did: string; base: string }) {
+  const { endorsers, more } = await getEndorsers(did);
+  if (endorsers.length === 0) return null;
+  return (
+    <IntentLink href={`${base}/endorsements`} className="trust-endorsed">
+      <AvatarStack avatars={endorsers.map(avatarOf)} total={endorsers.length + (more ? 1 : 0)} />
+      <span>Endorsed by {endorserNames(endorsers, more)}</span>
+    </IntentLink>
+  );
+}
+
+/** On one line under the endorsements, as staging has it. */
+async function FollowCounts({ did, base }: { did: string; base: string }) {
+  const { followers, following } = await getFollowCounts(did);
+  if (followers === 0 && following === 0) return null;
+  return (
+    <p className="trust-counts">
+      {followers > 0 && (
+        <IntentLink href={`${base}/followers`} className="trust-count">
+          <strong>{numberFormat.format(followers)}</strong>
+          {followers === 1 ? " follower" : " followers"}
+        </IntentLink>
+      )}
+      {followers > 0 && following > 0 && <span aria-hidden> · </span>}
+      {following > 0 && (
+        <IntentLink href={`${base}/following`} className="trust-count">
+          <strong>{numberFormat.format(following)}</strong> following
+        </IntentLink>
+      )}
+    </p>
   );
 }
 

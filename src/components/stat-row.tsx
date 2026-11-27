@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/components/intent-link";
 import type { Count } from "@/lib/hypercerts/queries";
 
 // Figures in a row, each a large number over its label, and a link to where
@@ -29,9 +29,10 @@ export function StatRow({ label, stats }: { label: string; stats: Stat[] }) {
         return (
           <li key={stat.label}>
             {stat.href ? (
-              <Link prefetch href={stat.href} className="stat stat-link">
+              // Its page loads on hover or focus, not with this one.
+              <IntentLink href={stat.href} className="stat stat-link">
                 {content}
-              </Link>
+              </IntentLink>
             ) : (
               <span className="stat">{content}</span>
             )}

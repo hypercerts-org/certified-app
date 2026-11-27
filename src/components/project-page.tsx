@@ -23,7 +23,6 @@ import {
   getPlace,
   getProjectFollowers,
   getProjectRecord,
-  getRecordBadges,
 } from "@/lib/hypercerts/queries";
 import { leadOf } from "@/lib/rich-text";
 
@@ -72,7 +71,7 @@ async function ProjectFollow({ uri, author, path }: { uri: string; author: strin
       subject={uri}
       path={path}
       actor={actingAs}
-      follow={actingAs ? await getEntityFollow(actingAs, uri) : null}
+      follow={actingAs ? getEntityFollow(actingAs, uri) : null}
     />
   );
 }
@@ -86,30 +85,26 @@ const TABS = [
 ] as const;
 
 /**
- * The tabs carry no numbers (the figures beside them do). Activities and
- * Badges show only when the project has some.
+ * Every tab, from the address alone, so they show with the page; a tab's
+ * page loads on hover or focus (ProfileTabs). No numbers: the figures beside
+ * them have them.
  */
 export async function ProjectTabs({ params }: { params: ProjectParams }) {
-  const { project, uri, base } = await projectFrom(params);
-  const badges = await getRecordBadges(uri);
-  const empty: Record<string, boolean> = {
-    "/activities": project.activityCount === 0,
-    "/badges": badges.length === 0,
-  };
+  const { actor, rkey } = await params;
+  const base = `/${decodeURIComponent(actor)}/project/${rkey}`;
   return (
     <ProfileTabs
       label="Project"
       tabs={TABS.map((tab) => ({
         label: tab.label,
         href: `${base}${tab.path}`,
-        empty: empty[tab.path] ?? false,
       }))}
     />
   );
 }
 
 export function ProjectTabsSkeleton() {
-  return <ProfileTabsSkeleton labels={["Overview"]} />;
+  return <ProfileTabsSkeleton labels={TABS.map((tab) => tab.label)} />;
 }
 
 /** Where the project is, as a map with its name, when it says. */
@@ -192,7 +187,10 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           )}
         </div>
         <div className="record-head-actions">
-          <Suspense fallback={null}>
+          {/* Shown at once; who is viewing and whether they follow stream in. */}
+          <Suspense
+            fallback={<FollowControl subject={uri} path={base} actor={undefined} follow={null} />}
+          >
             <ProjectFollow uri={uri} author={project.authorDid} path={base} />
           </Suspense>
           <Suspense fallback={null}>

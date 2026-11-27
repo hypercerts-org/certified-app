@@ -228,14 +228,14 @@ export async function getActorPlace(did: string): Promise<Place | null> {
   return record ? placeOf(record, did) : null;
 }
 
-/** The account in full: getActorCore with its verified handle and its place. */
+/**
+ * The account in full: getActorCore with its verified handle and its place.
+ * Not cached itself: its parts are, and a handle check that failed for a
+ * moment (null here) must not be kept for an hour.
+ */
 export async function getActor(actor: string): Promise<ActorDetail | null> {
-  "use cache";
-  if (!isDidParam(actor) && !l.isHandleString(actor)) return null;
-  publicData(tags.actor(actor));
   const core = await getActorCore(actor);
   if (!core) return null;
-  if (actor !== core.did) cacheTag(tags.actor(core.did));
   // Both outside the API, and independent: at once.
   const [handle, place] = await Promise.all([
     getHandle(core.did),
@@ -845,7 +845,7 @@ export async function getFollowCounts(did: string): Promise<FollowCounts> {
   const [followers, following, projects] = await Promise.all([
     api.call(app.certified.graph.listActorFollowers, { actor: did as Did, limit: 1 }, read()),
     api.call(app.certified.graph.listActorFollowing, { actor: did as Did, limit: 1 }, read()),
-    listProjectsFollowed(did),
+    projectsFollowed(did),
   ]);
   return {
     followers: followers.totalCount,
@@ -872,6 +872,14 @@ export async function listProjectsFollowed(
 ): Promise<{ rows: ProjectFollowRow[]; more: boolean }> {
   "use cache";
   publicData(tags.follows(did));
+  const { rows, more } = await projectsFollowed(did);
+  return { rows: await withHandlesIn(rows, "author"), more };
+}
+
+/** The same, the authors without handles: for counting, which needs none. */
+async function projectsFollowed(did: string): Promise<{ rows: ProjectFollowRow[]; more: boolean }> {
+  "use cache";
+  publicData(tags.follows(did));
 
   const rows: ProjectFollowRow[] = [];
   let cursor: string | undefined;
@@ -894,7 +902,7 @@ export async function listProjectsFollowed(
     }
     cursor = out.cursor ?? undefined;
   } while (cursor && rows.length < PROJECTS_FOLLOWED_CAP);
-  return { rows: await withHandlesIn(rows, "author"), more: Boolean(cursor) };
+  return { rows, more: Boolean(cursor) };
 }
 
 /**
@@ -940,6 +948,18 @@ export async function listEndorsements(
 ): Promise<PeoplePage> {
   "use cache";
   publicData(tags.endorsements(did));
+  const page = await endorsementPage(did, direction, withHidden);
+  return direction === "given" ? page : { ...page, rows: await withHandlesIn(page.rows, "actor") };
+}
+
+/** The same, received endorsers without handles: for the header, which links none of them. */
+async function endorsementPage(
+  did: string,
+  direction: "received" | "given",
+  withHidden: boolean,
+): Promise<PeoplePage> {
+  "use cache";
+  publicData(tags.endorsements(did));
 
   const { badgeAwards, cursor } = await api.call(
     app.certified.badge.listBadgeAwards,
@@ -980,10 +1000,7 @@ export async function listEndorsements(
       hidden: award.responseStatus === "rejected",
     });
   }
-  return {
-    rows: direction === "given" ? rows : await withHandlesIn(rows, "actor"),
-    more: Boolean(cursor),
-  };
+  return { rows, more: Boolean(cursor) };
 }
 
 /**
@@ -996,7 +1013,7 @@ export async function getEndorsers(
   "use cache";
   publicData(tags.endorsements(did));
 
-  const { rows, more } = await listEndorsements(did, "received");
+  const { rows, more } = await endorsementPage(did, "received", false);
   const seen = new Set<string>();
   const endorsers = rows
     .map((row) => row.actor)

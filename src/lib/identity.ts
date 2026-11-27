@@ -52,7 +52,9 @@ async function resolveHandle(did: string): Promise<string | null> {
   // DID (as the resolver's own resolveFromDid checks it).
   const handle = extractNormalizedHandle(await didDocument(did));
   if (!handle) return null;
-  const pointsTo = await handleResolver.resolve(handle, { noCache: true }).catch(() => null);
+  // A domain that answers with another DID, or none, isn't the account's.
+  // One that can't be reached says nothing: thrown, so it isn't cached.
+  const pointsTo = await handleResolver.resolve(handle, { noCache: true });
   return pointsTo === did ? handle : null;
 }
 
@@ -96,19 +98,28 @@ export async function getDid(handle: string): Promise<string | null> {
 const HANDLE_TIMEOUT_MS = 2_000;
 
 /**
- * An account's handle, verified both ways, or null (also when resolving takes
- * longer than HANDLE_TIMEOUT_MS: a handle's domain can be slow or down).
- * Failures aren't cached.
+ * An account's handle, verified both ways, or null when it has none that is
+ * valid. Throws when it can't tell: a lookup failed, or took longer than
+ * HANDLE_TIMEOUT_MS (a handle's domain can be slow or down). Failures aren't
+ * cached.
  */
-export async function getHandle(did: string): Promise<string | null> {
+export async function checkHandle(did: string): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       resolveHandle(did),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), HANDLE_TIMEOUT_MS)),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Handle check timed out")), HANDLE_TIMEOUT_MS);
+      }),
     ]);
-  } catch {
-    return null;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/** The same, null also when it can't tell: for showing and linking (a DID works too). */
+export async function getHandle(did: string): Promise<string | null> {
+  return checkHandle(did).catch(() => null);
 }
 
 /**
