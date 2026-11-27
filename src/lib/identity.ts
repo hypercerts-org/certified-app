@@ -38,14 +38,14 @@ const resolver = createIdentityResolver({ fetch, handleResolver }) as AtprotoIde
 
 /** The account's DID document. Throws when it can't be read; failures aren't cached. */
 async function didDocument(did: string) {
-  "use cache: remote";
+  "use cache";
   cacheLife("hours");
   cacheTag(tags.actor(did));
   return resolver.getDocumentFromDid(did as AtprotoDid, { noCache: true });
 }
 
 async function resolveHandle(did: string): Promise<string | null> {
-  "use cache: remote";
+  "use cache";
   cacheLife("hours");
   cacheTag(tags.actor(did));
   // The handle the document claims, only if that handle points back to the
@@ -59,7 +59,7 @@ async function resolveHandle(did: string): Promise<string | null> {
 }
 
 async function resolveDidOf(handle: string): Promise<string | null> {
-  "use cache: remote";
+  "use cache";
   cacheLife("hours");
   cacheTag(tags.handle(handle));
   // Resolving a handle also checks that the DID claims it back.
@@ -127,7 +127,7 @@ export async function getHandle(did: string): Promise<string | null> {
  * DID document. Throws when it can't be resolved; failures aren't cached.
  */
 export async function getPdsUrl(did: string): Promise<string> {
-  "use cache: remote";
+  "use cache";
   cacheLife("hours");
   cacheTag(tags.actor(did));
   return extractPdsUrl(await didDocument(did)).origin;

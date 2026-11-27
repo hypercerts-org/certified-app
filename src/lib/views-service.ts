@@ -424,7 +424,7 @@ export async function getNetworkFeed(query: NetworkFeedQuery): Promise<Page<Netw
 }
 
 async function cachedTrustedEvaluators(): Promise<ActorCard[]> {
-  "use cache: remote";
+  "use cache";
   cacheLife("public");
   const listUri = `at://${TRUSTED_EVALUATORS_DID}/org.hypercerts.collection/${TRUSTED_EVALUATORS_RKEY}`;
   cacheTag(tags.list(listUri));

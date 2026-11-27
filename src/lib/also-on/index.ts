@@ -77,7 +77,7 @@ const GAINFOREST = "https://www.gainforest.app";
 
 /** The pages GainForest lists in its sitemap: projects as "did/rkey", accounts as DIDs. */
 async function gainforestPages(): Promise<{ projects: string[]; accounts: string[] }> {
-  "use cache: remote";
+  "use cache";
   cacheLife("days");
   const read = async (url: string) => {
     const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
