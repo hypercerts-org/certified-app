@@ -55,7 +55,12 @@ export function ShareButton({
   what?: string;
 }) {
   const share = async () => {
-    const url = new URL(path, window.location.origin).href;
+    // If ProfileAddress updated a DID URL to its handle via history.replaceState,
+    // share the canonical handle address rather than the original DID path.
+    const currentActor =
+      what === "Profile link" ? window.location.pathname.split("/").filter(Boolean)[0] : undefined;
+    const target = currentActor ? `/${currentActor}` : path;
+    const url = new URL(target, window.location.origin).href;
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
@@ -506,6 +511,44 @@ export function SegmentedLinksSkeleton({ labels, current }: { labels: string[]; 
         </span>
       ))}
     </div>
+  );
+}
+
+export type RouteTabDef = {
+  readonly label: string;
+  readonly path: string;
+  readonly also?: readonly string[];
+  readonly nested?: boolean;
+};
+
+/**
+ * Tabs whose links are built from the URL's leading `baseSegments` segments
+ * (1 for `/[actor]`, 3 for `/[actor]/project/[rkey]` or `/[actor]/activity/[rkey]`).
+ * Reading `usePathname()` on the client lets clickable tabs render immediately
+ * in the App Shell before the server responds, and keeps their links in sync
+ * after `ProfileAddress` updates the URL via `history.replaceState`.
+ */
+export function RouteTabs({
+  label,
+  baseSegments,
+  tabs,
+}: {
+  label: string;
+  baseSegments: number;
+  tabs: readonly RouteTabDef[];
+}) {
+  const pathname = decodeURIComponent(usePathname());
+  const base = `/${pathname.split("/").filter(Boolean).slice(0, baseSegments).join("/")}`;
+  return (
+    <ProfileTabs
+      label={label}
+      tabs={tabs.map((tab) => ({
+        label: tab.label,
+        href: `${base}${tab.path}`,
+        also: tab.also?.map((sub) => `${base}${sub}`),
+        nested: tab.nested,
+      }))}
+    />
   );
 }
 

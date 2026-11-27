@@ -68,7 +68,7 @@ function nextSlot(): Promise<void> {
 }
 
 async function reverse(lat: number, lng: number): Promise<string | null> {
-  "use cache";
+  "use cache: remote";
   cacheLife("max");
   await nextSlot();
   const url = new URL(`${NOMINATIM}/reverse`);
@@ -120,7 +120,7 @@ async function ask<T>(url: URL): Promise<T> {
 }
 
 async function search(query: string): Promise<PlaceHit[]> {
-  "use cache";
+  "use cache: remote";
   cacheLife("days");
   const url = new URL(`${NOMINATIM}/search`);
   url.search = new URLSearchParams({
@@ -153,7 +153,7 @@ export async function searchPlaces(query: string): Promise<PlaceHit[]> {
 }
 
 async function nameAt(lat: number, lng: number): Promise<string | null> {
-  "use cache";
+  "use cache: remote";
   cacheLife("max");
   const url = new URL(`${NOMINATIM}/reverse`);
   url.search = new URLSearchParams({

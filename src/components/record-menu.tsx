@@ -48,8 +48,8 @@ export function RecordMenu({
   listKind: ListKind["label"];
   /** The record's own title, for screen readers and confirmations. */
   title: string;
-  /** The signed-in acting account DID, or null when signed out. */
-  actor: string | null;
+  /** The signed-in acting account DID, null when signed out, or undefined while loading. */
+  actor: string | null | undefined;
   /** Indexed number of likes on this record. */
   likeCount?: number;
   /** Acting account's like record AT-URI if already liked, else null. */
@@ -84,11 +84,11 @@ export function RecordMenu({
         <MenuContent label={`Actions for this ${what}`} align="end">
           <MenuItem
             onClick={() => {
-              if (!actor) {
+              if (actor === null) {
                 router.push(signInHref(path));
                 return;
               }
-              setListOpen(true);
+              if (actor) setListOpen(true);
             }}
           >
             <ListPlus size={16} aria-hidden />

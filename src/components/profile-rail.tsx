@@ -32,12 +32,15 @@ const countLabel = (count: number, more: boolean) =>
  */
 async function Figures({ did, base }: { did: string; base: string }) {
   await connection(); // per visit: not in the cached page (profile layout)
-  const [given, { accepted }, issued, { lists, more: moreLists }] = await Promise.all([
-    listEndorsements(did, "given"),
-    getBadges(did),
-    getIssuedBadges(did),
-    listLists(did),
-  ]);
+  const [given, { accepted }, issued, { lists, more: moreLists }, { received }] = await Promise.all(
+    [
+      listEndorsements(did, "given"),
+      getBadges(did),
+      getIssuedBadges(did),
+      listLists(did),
+      hasFunding(did),
+    ],
+  );
   const endorsed = new Set(given.rows.map((row) => row.actor.did)).size;
   const stats: Stat[] = [];
   if (endorsed > 0) {
@@ -64,7 +67,6 @@ async function Figures({ did, base }: { did: string; base: string }) {
       href: `${base}/lists`,
     });
   }
-  const { received } = await hasFunding(did);
   if (stats.length === 0 && !received) return null;
   return (
     <Card variant="panel" className="overview-box rail-card">

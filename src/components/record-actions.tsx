@@ -27,6 +27,33 @@ const KINDS: Record<
   },
 };
 
+/** Static header actions while viewer state and like count stream in. */
+export function RecordActionsFallback({
+  uri,
+  path,
+  title,
+}: {
+  uri: string;
+  path: string;
+  title: string;
+}) {
+  const [, , did, nsid, rkey] = uri.split("/");
+  const kind = KINDS[nsid];
+  if (!kind || !did || !rkey) return null;
+  return (
+    <RecordMenu
+      uri={uri}
+      path={path}
+      what={kind.what}
+      listKind={kind.listKind}
+      title={title}
+      actor={undefined}
+      editHref={null}
+      consequence={kind.consequence}
+    />
+  );
+}
+
 export async function RecordActions({
   uri,
   path,

@@ -4,6 +4,9 @@ import { BadgePage, BadgePageSkeleton, badgeFrom } from "@/components/badge-page
 import { nameOf } from "@/lib/hypercerts/views";
 import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 
+// Keep App Shell and hover per-link prefetches static (see the profile layout).
+export const ensureStatic = "prefetch";
+
 // Prerender one known badge at build time; every other is prerendered on its
 // first visit and cached per URL, the badge itself included. Its holders
 // render on each visit (BadgePage), so a click to a badge not yet cached

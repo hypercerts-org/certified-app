@@ -15,6 +15,11 @@ import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 // A project: its header across the top, then (as on a profile) the tabs and
 // the open tab on the left, and the side column on the right.
 
+// Keep App Shell and hover per-link prefetches static: viewer actions stream
+// in on navigation, so links and tabs never fire runtime server renders ahead
+// of a click (see the profile layout).
+export const ensureStatic = "prefetch";
+
 // Prerender one known project at build time; every other is prerendered on its
 // first visit and cached per URL (ISR), header, tabs and rail included, so a
 // later visit shows them at once. On Vercel a click to one not yet cached
@@ -53,7 +58,7 @@ export default function ProjectLayout({
       <div className="page-columns">
         <div className="page-main">
           <Suspense fallback={<ProjectTabsSkeleton />}>
-            <ProjectTabs params={params} />
+            <ProjectTabs />
           </Suspense>
           {children}
         </div>

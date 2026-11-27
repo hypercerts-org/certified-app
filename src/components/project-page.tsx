@@ -12,8 +12,8 @@ import { AlsoOn } from "@/components/also-on";
 import { AuthorLink } from "@/components/author-link";
 import { LocationCard } from "@/components/location-card";
 import { PageTitle } from "@/components/page-title";
-import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
-import { RecordActions } from "@/components/record-actions";
+import { FollowControl, ProfileTabsSkeleton, RouteTabs } from "@/components/profile-actions";
+import { RecordActions, RecordActionsFallback } from "@/components/record-actions";
 import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { RichText } from "@/components/rich-text";
 import { TileSlot } from "@/components/tile-slot";
@@ -87,22 +87,12 @@ const TABS = [
 ] as const;
 
 /**
- * Every tab, from the address alone, so they show with the page; a tab's
+ * Every tab, from the address alone, so they show with the App Shell; a tab's
  * page loads on hover or focus (ProfileTabs). No numbers: the figures beside
  * them have them.
  */
-export async function ProjectTabs({ params }: { params: ProjectParams }) {
-  const { actor, rkey } = await params;
-  const base = `/${decodeURIComponent(actor)}/project/${rkey}`;
-  return (
-    <ProfileTabs
-      label="Project"
-      tabs={TABS.map((tab) => ({
-        label: tab.label,
-        href: `${base}${tab.path}`,
-      }))}
-    />
-  );
+export function ProjectTabs() {
+  return <RouteTabs label="Project" baseSegments={3} tabs={TABS} />;
 }
 
 export function ProjectTabsSkeleton() {
@@ -196,7 +186,9 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           >
             <ProjectFollow uri={uri} author={project.authorDid} path={base} />
           </Suspense>
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={<RecordActionsFallback uri={uri} path={base} title={project.title} />}
+          >
             <RecordActions uri={uri} path={base} title={project.title} />
           </Suspense>
         </div>

@@ -12,8 +12,8 @@ import { identityOf } from "@/components/actor";
 import { AuthorLink } from "@/components/author-link";
 import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
-import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
-import { RecordActions } from "@/components/record-actions";
+import { ProfileTabsSkeleton, RouteTabs } from "@/components/profile-actions";
+import { RecordActions, RecordActionsFallback } from "@/components/record-actions";
 import { PartOf } from "@/components/record-context";
 import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { TileSlot } from "@/components/tile-slot";
@@ -52,21 +52,11 @@ const TABS = [
 ] as const;
 
 /**
- * Every tab, from the address alone, so they show with the page; a tab's
+ * Every tab, from the address alone, so they show with the App Shell; a tab's
  * page loads on hover or focus (ProfileTabs). No numbers.
  */
-export async function ActivityTabs({ params }: { params: ActivityParams }) {
-  const { actor, rkey } = await params;
-  const base = `/${decodeURIComponent(actor)}/activity/${rkey}`;
-  return (
-    <ProfileTabs
-      label="Activity"
-      tabs={TABS.map((tab) => ({
-        label: tab.label,
-        href: `${base}${tab.path}`,
-      }))}
-    />
-  );
+export function ActivityTabs() {
+  return <RouteTabs label="Activity" baseSegments={3} tabs={TABS} />;
 }
 
 export function ActivityTabsSkeleton() {
@@ -119,7 +109,9 @@ export async function ActivityHeader({ params }: { params: ActivityParams }) {
           </div>
         </div>
         <div className="record-head-actions">
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={<RecordActionsFallback uri={uri} path={base} title={activity.title} />}
+          >
             <RecordActions uri={uri} path={base} title={activity.title} />
           </Suspense>
         </div>

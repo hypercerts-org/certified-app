@@ -24,6 +24,11 @@ export async function RecordFigures({
   activities?: number;
 }) {
   await connection(); // per visit: not in the cached page
+  // Start funding alongside badges so activity pages (with no activity count)
+  // don't wait for two sequential API round trips before deciding whether to
+  // render the card.
+  const funding = getFundingSummary({ for: uri });
+  funding.catch(() => {});
   const badges = await getRecordBadges(uri);
   const stats: Stat[] = [];
   if (activities > 0) {
@@ -33,7 +38,7 @@ export async function RecordFigures({
     stats.push({ label: "Badges", value: badges.length, href: `${base}/badges` });
   }
   // Nothing to count: a card only for funding received.
-  if (stats.length === 0 && (await getFundingSummary({ for: uri })).totals.length === 0) {
+  if (stats.length === 0 && (await funding).totals.length === 0) {
     return null;
   }
   return (
@@ -44,15 +49,21 @@ export async function RecordFigures({
       <div className="rail-figures">
         {stats.length > 0 && <StatRow label="In numbers" stats={stats} />}
         <Suspense fallback={null}>
-          <Received uri={uri} base={base} />
+          <Received funding={funding} base={base} />
         </Suspense>
       </div>
     </Card>
   );
 }
 
-async function Received({ uri, base }: { uri: string; base: string }) {
-  const summary = await getFundingSummary({ for: uri });
+async function Received({
+  funding,
+  base,
+}: {
+  funding: ReturnType<typeof getFundingSummary>;
+  base: string;
+}) {
+  const summary = await funding;
   const [main] = summary.totals;
   if (!main) return null;
   return (

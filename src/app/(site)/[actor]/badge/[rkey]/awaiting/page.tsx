@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BadgePage, BadgePageSkeleton, badgeFrom } from "@/components/badge-page";
 
+export const ensureStatic = "prefetch";
+
+export async function generateStaticParams() {
+  return [{ actor: "did:plc:ipcx4wzsuz3c6nkqgas75rxw", rkey: "3mz62dbgyff2t" }];
+}
+
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/badge/[rkey]/awaiting">): Promise<Metadata> {
