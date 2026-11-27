@@ -16,7 +16,7 @@ const TIMEOUT_MS = 4_000;
 
 /** A blob's text, cached for good: a blob never changes under its CID. */
 async function fetchBlobText(did: string, cid: string): Promise<string> {
-  "use cache";
+  "use cache: remote";
   cacheLife("max");
   const url = new URL("/xrpc/com.atproto.sync.getBlob", await getPdsUrl(did));
   url.search = new URLSearchParams({ did, cid }).toString();

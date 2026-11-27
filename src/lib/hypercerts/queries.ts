@@ -164,7 +164,7 @@ async function placeOf(record: Parameters<typeof toPlace>[0], did: string): Prom
  * getActorPlace).
  */
 export async function getActorCore(actor: string): Promise<ActorDetail | null> {
-  "use cache";
+  "use cache: remote";
   // Anything else in the URL (a stray /favicon.png, a probe) is no account:
   // answered without an API call or cache tag pollution.
   if (!isDidParam(actor) && !l.isHandleString(actor)) return null;
@@ -214,7 +214,7 @@ export async function getActorCore(actor: string): Promise<ActorDetail | null> {
  * record keeps them there, and the name from the geocoder.
  */
 export async function getActorPlace(did: string): Promise<Place | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.actor(did));
   const organization = await api.xrpcSafe(app.certified.actor.getOrganization, {
     params: { actor: did as Did },
@@ -264,7 +264,7 @@ export async function listActivitiesPage(options: {
   cursor?: string;
   limit: number;
 }): Promise<Page<ActivityCard>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.activities(options.author));
 
   const { activities, cursor } = await api.call(
@@ -282,7 +282,7 @@ export async function listProjectsPage(options: {
   author: string;
   cursor?: string;
 }): Promise<Page<ProjectCard>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.projects(options.author));
 
   const { collections, cursor } = await api.call(
@@ -303,7 +303,7 @@ export async function listProjectsPage(options: {
  * handle needs outside lookups). A project's page shows this first.
  */
 export async function getProjectRecord(uri: string): Promise<ProjectDetail | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.project(uri));
 
   const result = await api.xrpcSafe(org.hypercerts.collection.getCollection, {
@@ -317,7 +317,7 @@ export async function getProjectRecord(uri: string): Promise<ProjectDetail | nul
 
 /** The project with its author's verified handle. */
 export async function getProject(uri: string): Promise<ProjectDetail | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.project(uri));
   const project = await getProjectRecord(uri);
   if (!project) return null;
@@ -339,7 +339,7 @@ export async function listProjectActivitiesPage(options: {
   project: string;
   cursor?: string;
 }): Promise<Page<ActivityCard>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.project(options.project));
 
   const { items, cursor } = await api.call(
@@ -377,7 +377,7 @@ function chunks<T>(items: T[], size = 100): T[][] {
  * is left out): batched, one call per hundred, never one per account.
  */
 export async function getActorCards(dids: string[]): Promise<ActorCard[]> {
-  "use cache";
+  "use cache: remote";
   cacheLife("public");
   for (const did of dids) cacheTag(tags.actor(did));
   const cards = await actorCards(dids);
@@ -452,7 +452,7 @@ const LIST_TYPES = ["list:endorsements", "list:certs", "list:projects", "list:ac
 export type RecordCounts = { activities: Count; projects: Count; lists: Count };
 
 export async function getRecordCounts(did: string): Promise<RecordCounts> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.activities(did));
   cacheTag(tags.projects(did));
 
@@ -482,7 +482,7 @@ export async function getRecordCounts(did: string): Promise<RecordCounts> {
 
 /** The account's newest activities and projects together, newest first. */
 export async function listLatestRecords(did: string, limit: number): Promise<LatestRecord[]> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.activities(did));
   cacheTag(tags.projects(did));
 
@@ -530,7 +530,7 @@ type NetworkKind = keyof NetworkCounts;
  * other kinds page through, capped at MAX_COUNTED.
  */
 async function countNetwork(kind: NetworkKind): Promise<Count | null> {
-  "use cache";
+  "use cache: remote";
   try {
     const count = await fetchNetworkCount(kind);
     cacheLife("hours");
@@ -617,7 +617,7 @@ const MAX_WORK = 500;
  * that its projects hold.
  */
 export async function getWork(did: string): Promise<Work> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.activities(did));
   cacheTag(tags.projects(did));
 
@@ -692,7 +692,7 @@ export type Endorsements = {
 const LATEST_ENDORSEMENTS = 3;
 
 export async function getEndorsements(did: string): Promise<Endorsements> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.endorsements(did));
 
   const badgeTypes = ["endorsement"];
@@ -776,7 +776,7 @@ export async function getEndorsement(
   actor: string,
   subject: string,
 ): Promise<EndorsementRef | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.endorsements(actor));
   return getIndexedEndorsement(actor, subject);
 }
@@ -797,7 +797,7 @@ export async function getIndexedFollow(actor: string, subject: string): Promise<
 
 /** {@link getIndexedFollow}, cached with the actor's follows. */
 export async function getFollow(actor: string, subject: string): Promise<FollowRef | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.follows(actor));
   return getIndexedFollow(actor, subject);
 }
@@ -820,7 +820,7 @@ export async function getIndexedEntityFollow(
 
 /** {@link getIndexedEntityFollow}, cached with the actor's follows. */
 export async function getEntityFollow(actor: string, entity: string): Promise<FollowRef | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.follows(actor));
   return getIndexedEntityFollow(actor, entity);
 }
@@ -839,7 +839,7 @@ export type FollowCounts = {
 };
 
 export async function getFollowCounts(did: string): Promise<FollowCounts> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.follows(did));
 
   const [followers, following, projects] = await Promise.all([
@@ -870,7 +870,7 @@ const PROJECTS_FOLLOWED_CAP = 500;
 export async function listProjectsFollowed(
   did: string,
 ): Promise<{ rows: ProjectFollowRow[]; more: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.follows(did));
   const { rows, more } = await projectsFollowed(did);
   return { rows: await withHandlesIn(rows, "author"), more };
@@ -878,7 +878,7 @@ export async function listProjectsFollowed(
 
 /** The same, the authors without handles: for counting, which needs none. */
 async function projectsFollowed(did: string): Promise<{ rows: ProjectFollowRow[]; more: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.follows(did));
 
   const rows: ProjectFollowRow[] = [];
@@ -910,7 +910,7 @@ async function projectsFollowed(did: string): Promise<{ rows: ProjectFollowRow[]
  * newest first (one page), and how many do in all.
  */
 export async function getProjectFollowers(uri: string): Promise<PeoplePage & { total: number }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.project(uri));
 
   const { followers, totalCount, cursor } = await api.call(
@@ -946,7 +946,7 @@ export async function listEndorsements(
   direction: "received" | "given",
   withHidden = false,
 ): Promise<PeoplePage> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.endorsements(did));
   const page = await endorsementPage(did, direction, withHidden);
   return direction === "given" ? page : { ...page, rows: await withHandlesIn(page.rows, "actor") };
@@ -958,7 +958,7 @@ async function endorsementPage(
   direction: "received" | "given",
   withHidden: boolean,
 ): Promise<PeoplePage> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.endorsements(did));
 
   const { badgeAwards, cursor } = await api.call(
@@ -1010,7 +1010,7 @@ async function endorsementPage(
 export async function getEndorsers(
   did: string,
 ): Promise<{ endorsers: ActorCard[]; more: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.endorsements(did));
 
   const { rows, more } = await endorsementPage(did, "received", false);
@@ -1055,7 +1055,7 @@ async function badgeAwards(did: string, response: "accepted" | "unanswered" | "r
 
 /** The badges awarded to `did`, each list in force first, then newest; expired last. */
 export async function getBadges(did: string): Promise<Badges> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badges(did));
 
   const [accepted, awaiting] = await Promise.all([
@@ -1081,7 +1081,7 @@ export async function getBadges(did: string): Promise<Badges> {
  * accepted again. A profile never shows them.
  */
 export async function getRejectedBadges(did: string): Promise<BadgeCard[]> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badges(did));
 
   const { awards } = await badgeAwards(did, "rejected");
@@ -1095,7 +1095,7 @@ export async function getRejectedBadges(did: string): Promise<BadgeCard[]> {
 
 /** The badges awarded to record `uri` (a project, an activity), not rejected: in force first, then newest. */
 export async function getRecordBadges(uri: string): Promise<BadgeCard[]> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badges(uri));
 
   const { badgeAwards } = await api.call(
@@ -1125,7 +1125,7 @@ const PROJECT_BADGE_PAGES = 3;
 export async function getProjectBadges(
   did: string,
 ): Promise<{ badges: ProjectBadge[]; more: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badges(did));
   cacheTag(tags.projects(did));
 
@@ -1181,7 +1181,7 @@ export type AwardedBadge = BadgeCard & { recipient: BadgeRecipient };
 export async function getAwardedBadges(
   did: string,
 ): Promise<{ badges: AwardedBadge[]; more: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badges(did));
 
   const awards: BadgeAwardView[] = [];
@@ -1257,7 +1257,7 @@ const ISSUED_PAGE = 100;
 export async function getIssuedBadges(
   did: string,
 ): Promise<{ badges: IssuedBadge[]; more: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badges(did));
 
   const { badgeDefinitions, cursor } = await api.call(
@@ -1307,7 +1307,7 @@ export async function getYourBadges(did: string): Promise<IssuedBadge[]> {
 
 /** A badge definition, or null when there is none at `uri`. */
 export async function getBadge(uri: string): Promise<BadgeDetail | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badge(uri));
 
   const result = await api.xrpcSafe(app.certified.badge.getBadgeDefinition, {
@@ -1390,7 +1390,7 @@ export async function listBadgeHolders(
   allowedIssuers: string[],
   cursor?: string,
 ): Promise<BadgeHolders> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.badge(uri));
 
   const out = await api.call(
@@ -1448,7 +1448,7 @@ export async function listFollows(
   did: string,
   direction: "followers" | "following",
 ): Promise<PeoplePage> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.follows(did));
 
   const params = { actor: did as Did, limit: PEOPLE_PAGE };
@@ -1478,7 +1478,7 @@ const LIST_KIND: Record<string, string> = {
 };
 
 export async function listLists(did: string): Promise<{ lists: ListCard[]; more: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.projects(did));
 
   const { collections, cursor } = await api.call(
@@ -1513,7 +1513,7 @@ export const LIST_ITEMS_PAGE = 50;
 
 /** The list `rkey` of `did`, or null when there is none (or it isn't a list). */
 export async function getList(did: string, rkey: string): Promise<ListDetail | null> {
-  "use cache";
+  "use cache: remote";
   const uri = `at://${did}/org.hypercerts.collection/${rkey}`;
   publicData(tags.list(uri));
 
@@ -1560,7 +1560,7 @@ export async function getIndexedList(
 const REACTION_BATCH = 50;
 
 async function cachedLikeCounts(unique: string[]): Promise<Record<string, number>> {
-  "use cache";
+  "use cache: remote";
   cacheLife("public");
   for (const uri of unique) cacheTag(tags.likes(uri));
 
@@ -1604,7 +1604,7 @@ async function cachedActorLikesForSubjects(
   actor: string,
   unique: string[],
 ): Promise<Record<string, string | null>> {
-  "use cache";
+  "use cache: remote";
   cacheLife("public");
   cacheTag(tags.actorLikes(actor));
 
@@ -1694,7 +1694,7 @@ const collectionOf = (uri: string) => uri.split("/")[3] ?? "";
  * activities a hundred per call, endorsements one call each.
  */
 export async function resolveListItems(uris: string[], listUri?: string): Promise<ListItem[]> {
-  "use cache";
+  "use cache: remote";
   cacheLife("public");
   if (listUri) cacheTag(tags.list(listUri));
 
@@ -1836,7 +1836,7 @@ export async function listReceiptsPage(
   filter: ReceiptFilter,
   cursor?: string,
 ): Promise<Page<ReceiptRow>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.funding(Object.values(filter)[0]));
 
   const out = await api.call(
@@ -1926,7 +1926,7 @@ export type FundingSummary = {
  * minute public data is: a large account takes many calls to add up.
  */
 export async function getFundingSummary(filter: ReceiptFilter): Promise<FundingSummary> {
-  "use cache";
+  "use cache: remote";
   cacheLife("hours");
   cacheTag(tags.funding(Object.values(filter)[0]));
 
@@ -1966,7 +1966,7 @@ export async function getFundingSummary(filter: ReceiptFilter): Promise<FundingS
 export async function hasFunding(
   did: string,
 ): Promise<{ received: boolean; given: boolean; confirmed: boolean }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.funding(did));
 
   const [received, given, confirmed] = await Promise.all([
@@ -2020,7 +2020,7 @@ export type ActivityDetail = ActivityCard & {
  * activity's page shows this first.
  */
 export async function getActivityRecord(uri: string): Promise<ActivityDetail | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.activities(didOf(uri)));
 
   const result = await api.xrpcSafe(org.hypercerts.claim.getActivity, {
@@ -2042,7 +2042,7 @@ export async function getActivityRecord(uri: string): Promise<ActivityDetail | n
 
 /** The activity with its author's and contributors' verified handles, for links. */
 export async function getActivity(uri: string): Promise<ActivityDetail | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.activities(didOf(uri)));
   const activity = await getActivityRecord(uri);
   if (!activity) return null;
@@ -2098,7 +2098,7 @@ function subjectsFor(uri: string | string[]): AtUri[] {
 
 /** The evaluations of record `uri` (or of several records), newest first. */
 export async function getEvaluations(uri: string | string[]): Promise<EvaluationWithEvaluators[]> {
-  "use cache";
+  "use cache: remote";
   cacheLife("public");
 
   const { evaluations } = await api.call(
@@ -2122,7 +2122,7 @@ export async function getEvaluations(uri: string | string[]): Promise<Evaluation
 
 /** The measurements of record `uri` (or of several records), newest first. */
 export async function getMeasurements(uri: string | string[]): Promise<Measurement[]> {
-  "use cache";
+  "use cache: remote";
   cacheLife("public");
 
   const { measurements } = await api.call(
@@ -2143,7 +2143,7 @@ export async function getMeasurements(uri: string | string[]): Promise<Measureme
 export async function getAttachments(
   uri: string | string[],
 ): Promise<{ updates: Attachment[]; files: Attachment[] }> {
-  "use cache";
+  "use cache: remote";
   cacheLife("public");
 
   const { attachments } = await api.call(
@@ -2186,7 +2186,7 @@ export type TimelineItem = { key: string; time: number } & (
 
 /** A project's or an activity's timeline, newest first. */
 export async function getTimeline(uri: string): Promise<TimelineItem[]> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.project(uri));
   cacheTag(tags.badges(uri));
   cacheTag(tags.activities(didOf(uri)));
@@ -2323,7 +2323,7 @@ export async function getTimeline(uri: string): Promise<TimelineItem[]> {
 
 /** The projects holding activity `uri`, any author's. */
 export async function getProjectsWith(uri: string): Promise<ProjectCard[]> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.context(uri));
   cacheTag(tags.activities(didOf(uri)));
 
@@ -2337,7 +2337,7 @@ export async function getProjectsWith(uri: string): Promise<ProjectCard[]> {
 
 /** A location record (app.certified.location) as a place, with a short name from its point. */
 export async function getPlace(uri: string): Promise<Place | null> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.context(uri));
 
   const result = await api.xrpcSafe(app.certified.location.getLocation, {
@@ -2359,7 +2359,7 @@ export type SavedPlace = { uri: string; name: string; point: { lat: number; lng:
  * name and point once: many accounts wrote the same place more than once.
  */
 export async function listSavedPlaces(did: string): Promise<SavedPlace[]> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.locations(did));
 
   const { locations } = await api.call(
@@ -2402,7 +2402,7 @@ export async function exploreActivities(options: {
   cursor?: string;
   limit: number;
 }): Promise<Page<ExploreActivity>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.explore());
 
   const params = {
@@ -2433,7 +2433,7 @@ export async function exploreProjects(options: {
   cursor?: string;
   limit: number;
 }): Promise<Page<ExploreProject>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.explore());
 
   const params = {
@@ -2525,7 +2525,7 @@ export async function exploreAccounts(options: {
   cursor?: string;
   limit: number;
 }): Promise<Page<ExploreAccount>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.explore());
   const now = Date.now();
 
@@ -2618,7 +2618,7 @@ const byCreated = <T extends { uri: string; record: { createdAt?: unknown } }>(v
  * their newest featured project.
  */
 async function featuredUris(kind: FeaturedKind): Promise<string[]> {
-  "use cache";
+  "use cache: remote";
   cacheLife("hours");
   cacheTag(tags.badge(FEATURED_BADGE));
   const projectUris = await featuredProjectUris();
@@ -2672,7 +2672,7 @@ export async function exploreFeatured<K extends FeaturedKind>(
   limit: number,
   sort: ExploreSort = "newest",
 ): Promise<Page<ExploreItem<K>>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.explore());
   const listed = await featuredUris(kind);
   const all = sort === "oldest" ? [...listed].reverse() : listed;
@@ -2768,7 +2768,7 @@ async function feedSourcePage(
   did: string,
   cursor: string | undefined,
 ): Promise<{ events: FeedEvent[]; cursor: string | null }> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.actor(did));
 
   const limit = FEED_SOURCE_PAGE;
@@ -3000,7 +3000,7 @@ function coveredByProject(activity: ActivityCard, projects: ProjectCard[]): bool
 
 /** A page of an account's feed: rows, newest first, and where the next page starts. */
 export async function getProfileFeed(did: string, cursor?: string): Promise<Page<FeedRow>> {
-  "use cache";
+  "use cache: remote";
   publicData(tags.actor(did));
 
   const state: FeedState =
