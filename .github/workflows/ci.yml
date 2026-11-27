@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Lint, format, lexicons, typecheck, test and build
+    name: Lint, format, typecheck, test and build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,7 +27,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format:check
-      - run: pnpm lex:check
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

@@ -5,4 +5,4 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - "@hypercerts-org/ui-react@0.3.4"
   - "@hypercerts-org/api@0.4.0"
-  - "@hypercerts-org/certified-group-service@0.1.0"
+  - "@hypercerts-org/certified-group-service@0.2.0"

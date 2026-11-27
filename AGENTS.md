@@ -72,7 +72,7 @@ Styling follows `docs/design-system.md`: type, spacing and colors only from its 
 
 Use pnpm, the version pinned in `package.json`. Before handing work back, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` and `pnpm build` must pass.
 
-API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, and the Certified Group Service's methods from `@hypercerts-org/certified-group-service`, all installed from npm. Do not add local lexicon code generation, with one exception: `com.atproto.server.getServiceAuth`, which calling CGS needs and no package ships, is installed and generated with `lex install` and `lex build` (`lexicons.json`, `lexicons/`, `src/lexicons/`).
+API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, and the Certified Group Service's methods (including `com.atproto.server.getServiceAuth`) from `@hypercerts-org/certified-group-service`, all installed from npm. Do not add local lexicon code generation.
 
 Ask who is signed in only through `src/lib/auth/dal.ts` (`getUser()`; `getOAuthSession()` in Server Actions and Route Handlers; `readOAuthSession()` in Server Components), and keep calls that read the session inside a Suspense boundary so public pages stay cached. Sign-in needs Valkey; see the README's "Signing in locally".
 

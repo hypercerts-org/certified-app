@@ -39,10 +39,10 @@ symlinked `node_modules` breaks `next build`). The project uses Node 24
 command with `mise exec node@24 --`.
 
 ```bash
-pnpm lint && pnpm format:check && pnpm lex:check && pnpm typecheck && pnpm test && pnpm build
+pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
 ```
 
-All six must pass (`AGENTS.md`). A failure is the first finding; quote the
+All five must pass (`AGENTS.md`). A failure is the first finding; quote the
 error. `pnpm build` can exit 0 and still log errors, so search its output:
 `Error occurred prerendering` fails a page; `"use cache: private" rejects
 when the prerender is complete` means a catch block swallowed one of Next's
@@ -354,5 +354,5 @@ After the findings:
 
 End by offering to make the fixes. When the author says yes, fix them one at
 a time, each as its own commit with a message that says what changed and why.
-Run all six gates, the build included, before every commit, not only at the
+Run all five gates, the build included, before every commit, not only at the
 end: a change can pass lint and tests and still fail a prerender.

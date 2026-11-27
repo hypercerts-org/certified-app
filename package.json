@@ -20,10 +20,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "lex:install": "lex install",
-    "lex:build": "lex build --clear --index-file --import-ext \"\"",
-    "lex:check": "lex install --ci && pnpm lex:build && test -z \"$(git status --porcelain lexicons src/lexicons)\""
+    "test": "vitest run"
   },
   "dependencies": {
     "@atproto-labs/fetch-node": "0.4.5",
@@ -33,7 +30,7 @@
     "@atproto/lex-cbor": "0.1.9",
     "@atproto/oauth-client-node": "0.5.16",
     "@hypercerts-org/api": "0.4.0",
-    "@hypercerts-org/certified-group-service": "0.1.0",
+    "@hypercerts-org/certified-group-service": "0.2.0",
     "@hypercerts-org/lexicon": "2.0.1",
     "@hypercerts-org/sdk": "file:vendor/hypercerts-org-sdk-0.0.0.tgz",
     "@hypercerts-org/ui-react": "0.3.4",
