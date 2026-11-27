@@ -24,10 +24,10 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ActorPicker } from "@/components/actor-picker";
-import { notifyActingAsChanged } from "@/components/like-button";
 import { switchActingAs } from "@/lib/acting-as-actions";
 import { ROW_ACTION } from "@/lib/button-roles";
 import * as groupActions from "@/lib/hypercerts/group-actions";
+import { queryKeys } from "@/lib/query-keys";
 
 /** "New group": registers a group on CGS and initializes its organization record. */
 export function NewGroupDialog({
@@ -104,7 +104,7 @@ export function NewGroupDialog({
         return;
       }
       setCreated(result);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       toast(`Created @${result.handle}`);
     } finally {
       setSubmitting(false);
@@ -150,7 +150,9 @@ export function NewGroupDialog({
                   setOpeningWorkspace(true);
                   try {
                     const switched = await switchActingAs(groupDid);
-                    if (switched.ok) notifyActingAsChanged();
+                    if (switched.ok) {
+                      void queryClient.resetQueries({ queryKey: queryKeys.likesAll });
+                    }
                   } finally {
                     setOpeningWorkspace(false);
                   }
@@ -329,7 +331,7 @@ export function AddMemberDialog({ groupDid }: { groupDid: string }) {
       }
       setOpen(false);
       reset();
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       toast("Member added");
       router.refresh();
     } finally {
@@ -447,7 +449,7 @@ export function MemberActions({
         toast.error(result.message);
         return;
       }
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       toast(`${memberName} is now ${nextRole === "admin" ? "an admin" : "a member"}`);
       router.refresh();
     });
@@ -465,7 +467,7 @@ export function MemberActions({
         return;
       }
       setConfirming(false);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       toast(`Removed ${memberName}`);
       router.refresh();
     });

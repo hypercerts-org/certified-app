@@ -1,10 +1,11 @@
 "use client";
 
 // Like button + batched timeline scope (`LikeScope`) backed by
-// `@hypercerts-org/sdk/social` (`likeRecord` / `unlikeRecord`) and
-// `/api/likes` (`app.certified.feed.getReactionCounts` + `getActorReactions`).
+// `@hypercerts-org/sdk/social` (`likeRecord` / `unlikeRecord`),
+// `/api/likes`, and TanStack Query (`likesBatchQuery`).
 
 import { Button } from "@hypercerts-org/ui-react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -14,25 +15,24 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
+  useOptimistic,
   useState,
   useTransition,
 } from "react";
 import { toast } from "sonner";
 import * as likeActions from "@/lib/hypercerts/like-actions";
+import {
+  type LikeEntry,
+  type LikesBatchResponse,
+  likesBatchQuery,
+  queryKeys,
+} from "@/lib/query-keys";
 import { signInHref } from "@/lib/validate";
 
+export type { LikeEntry };
+
 const numberFormat = new Intl.NumberFormat("en");
-const ACTING_AS_CHANGED_EVENT = "certified:acting-as-changed";
-
-/** Notifies mounted `<LikeScope>` providers to re-fetch likes after `switchActingAs`. */
-export function notifyActingAsChanged() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(ACTING_AS_CHANGED_EVENT));
-  }
-}
-
-export type LikeEntry = { count: number; likeUri: string | null };
+const BATCH_SIZE = 50;
 
 const lost = (action: "like" | "unlike") =>
   ({
@@ -68,7 +68,7 @@ export function LikeButton({
   initialCount: number;
   initialLikeUri: string | null;
   variant?: "header" | "post";
-  /** Optional callback to keep a parent `LikeScope` map in sync after toggle. */
+  /** Optional callback to keep a parent `LikeScope` cache in sync after toggle. */
   onSync?: (subject: string, next: LikeEntry) => void;
   /** True when batch hydration failed, so clicking retries instead of staying stuck disabled. */
   loadFailed?: boolean;
@@ -78,18 +78,19 @@ export function LikeButton({
   const pathname = usePathname();
   const returnPath = path ?? pathname ?? "/";
 
-  const [state, setState] = useState<LikeEntry>({
+  const [committed, setCommitted] = useState<LikeEntry>({
     count: initialCount,
     likeUri: initialLikeUri,
   });
-  const [pending, startTransition] = useTransition();
-
-  // Sync when server/batch props arrive or update (unless a local toggle is in flight).
+  // Sync committed state when server/batch props arrive or refresh.
   useEffect(() => {
-    setState({ count: initialCount, likeUri: initialLikeUri });
+    setCommitted({ count: initialCount, likeUri: initialLikeUri });
   }, [initialCount, initialLikeUri]);
 
-  const liked = state.likeUri !== null;
+  const [optimistic, setOptimistic] = useOptimistic(committed);
+  const [pending, startTransition] = useTransition();
+
+  const liked = optimistic.likeUri !== null;
   const hydrating = actor === undefined && !loadFailed;
 
   const toggle = () => {
@@ -104,16 +105,15 @@ export function LikeButton({
       return;
     }
 
-    const before = state;
-    const nextLiked = !liked;
-    const optimistic: LikeEntry = {
+    const before = committed;
+    const nextLiked = before.likeUri === null;
+    const nextOptimistic: LikeEntry = {
       count: Math.max(0, before.count + (nextLiked ? 1 : -1)),
       likeUri: nextLiked ? "pending" : null,
     };
-    setState(optimistic);
-    onSync?.(subject, optimistic);
 
     startTransition(async () => {
+      setOptimistic(nextOptimistic);
       const result = nextLiked
         ? await likeActions.likeRecord({ repo: actor, subject }).catch(() => lost("like"))
         : await likeActions
@@ -125,22 +125,20 @@ export function LikeButton({
             .catch(() => lost("unlike"));
 
       if (!result.ok) {
-        setState(before);
-        onSync?.(subject, before);
         toast.error(result.message);
         return;
       }
 
       const settled: LikeEntry = {
-        count: optimistic.count,
+        count: nextOptimistic.count,
         likeUri: result.likeUri,
       };
-      setState(settled);
+      setCommitted(settled);
       onSync?.(subject, settled);
     });
   };
 
-  const countText = state.count > 0 ? numberFormat.format(state.count) : null;
+  const countText = optimistic.count > 0 ? numberFormat.format(optimistic.count) : null;
   const label = liked ? "Unlike" : "Like";
 
   if (variant === "post") {
@@ -191,103 +189,82 @@ type LikeScopeValue = {
 
 const LikeScopeContext = createContext<LikeScopeValue | null>(null);
 
+/** Groups unseen subject AT-URIs into sorted batches of 50 so prior batches stay cache hits. */
+function chunkNewSubjects(subjects: string[], seen: ReadonlySet<string>): string[][] {
+  const added: string[] = [];
+  const local = new Set(seen);
+  for (const uri of subjects) {
+    if (!uri || local.has(uri)) continue;
+    local.add(uri);
+    added.push(uri);
+  }
+  if (added.length === 0) return [];
+  added.sort();
+  const batches: string[][] = [];
+  for (let i = 0; i < added.length; i += BATCH_SIZE) {
+    batches.push(added.slice(i, i + BATCH_SIZE));
+  }
+  return batches;
+}
+
 /**
  * Batches like counts and viewer state for every `subjects` AT-URI rendered
- * inside a timeline or feed, issuing one `/api/likes` request per batch of new
- * subjects (including after Load more). Resets automatically when the user
- * switches "Act as" so likes always write as the active account.
+ * inside a timeline or feed through TanStack Query (`likesBatchQuery`). Each
+ * new page of subjects appends immutable batches so prior pages stay cached;
+ * switching "Act as" resets `queryKeys.likesAll` so likes always write as the
+ * active account.
  */
 export function LikeScope({ subjects, children }: { subjects: string[]; children: ReactNode }) {
-  const [actor, setActor] = useState<string | null | undefined>(undefined);
-  const [entries, setEntries] = useState<Record<string, LikeEntry>>({});
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [epoch, setEpoch] = useState(0);
-  const fetchedRef = useRef<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+  const [batches, setBatches] = useState<string[][]>(() => chunkNewSubjects(subjects, new Set()));
 
-  const resetScope = useCallback(() => {
-    fetchedRef.current.clear();
-    setActor(undefined);
-    setEntries({});
-    setLoadFailed(false);
-    setEpoch((n) => n + 1);
-  }, []);
+  const seen = useMemo(() => new Set(batches.flat()), [batches]);
+  const extra = useMemo(() => chunkNewSubjects(subjects, seen), [subjects, seen]);
+  if (extra.length > 0) {
+    setBatches((prev) => [...prev, ...extra]);
+  }
 
-  useEffect(() => {
-    window.addEventListener(ACTING_AS_CHANGED_EVENT, resetScope);
-    return () => window.removeEventListener(ACTING_AS_CHANGED_EVENT, resetScope);
-  }, [resetScope]);
+  const results = useQueries({
+    queries: batches.map((batch) => likesBatchQuery(batch)),
+  });
 
-  const subjectsKey = useMemo(
-    () => [...new Set(subjects.filter(Boolean))].sort().join("\n"),
-    [subjects],
+  const actor = useMemo(() => {
+    if (batches.length === 0) return null;
+    for (const res of results) {
+      if (res.data !== undefined) return res.data.actor;
+    }
+    return undefined;
+  }, [batches.length, results]);
+
+  const entries = useMemo(() => {
+    const merged: Record<string, LikeEntry> = {};
+    for (const res of results) {
+      if (res.data) Object.assign(merged, res.data.likes);
+    }
+    return merged;
+  }, [results]);
+
+  const loadFailed = results.some((res) => res.isError && res.data === undefined);
+
+  const sync = useCallback(
+    (subject: string, next: LikeEntry) => {
+      queryClient.setQueriesData<LikesBatchResponse>(
+        { queryKey: queryKeys.likesAll },
+        (previous) => {
+          if (!previous || !(subject in previous.likes)) return previous;
+          return {
+            ...previous,
+            likes: { ...previous.likes, [subject]: next },
+          };
+        },
+      );
+    },
+    [queryClient],
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `epoch` intentionally triggers re-fetch on account switch or manual retry
-  useEffect(() => {
-    const all = subjectsKey ? subjectsKey.split("\n") : [];
-    const missing = all.filter((uri) => !fetchedRef.current.has(uri));
-    if (missing.length === 0) return;
-
-    const controller = new AbortController();
-    let settled = false;
-    setLoadFailed(false);
-    for (const uri of missing) fetchedRef.current.add(uri);
-
-    const batches: string[][] = [];
-    for (let i = 0; i < missing.length; i += 50) {
-      batches.push(missing.slice(i, i + 50));
-    }
-
-    void Promise.all(
-      batches.map(async (batch) => {
-        const params = new URLSearchParams();
-        for (const uri of batch) params.append("subjects", uri);
-        const res = await fetch(`/api/likes?${params.toString()}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`Likes request failed (${res.status})`);
-        return (await res.json()) as {
-          actor: string | null;
-          likes: Record<string, LikeEntry>;
-        };
-      }),
-    )
-      .then((results) => {
-        if (controller.signal.aborted) return;
-        settled = true;
-        let nextActor: string | null | undefined;
-        const merged: Record<string, LikeEntry> = {};
-        for (const res of results) {
-          nextActor = res.actor;
-          Object.assign(merged, res.likes);
-        }
-        if (nextActor !== undefined) setActor(nextActor);
-        if (Object.keys(merged).length > 0) {
-          setEntries((prev) => ({ ...merged, ...prev }));
-        }
-      })
-      .catch(() => {
-        // Release URIs so Strict Mode remount or a retry can re-fetch cleanly.
-        for (const uri of missing) fetchedRef.current.delete(uri);
-        if (!controller.signal.aborted) setLoadFailed(true);
-      });
-
-    return () => {
-      controller.abort();
-      if (!settled) {
-        for (const uri of missing) fetchedRef.current.delete(uri);
-      }
-    };
-  }, [subjectsKey, epoch]);
-
-  const sync = useCallback((subject: string, next: LikeEntry) => {
-    setEntries((prev) => ({ ...prev, [subject]: next }));
-  }, []);
-
   const retry = useCallback(() => {
-    setLoadFailed(false);
-    setEpoch((n) => n + 1);
-  }, []);
+    void queryClient.refetchQueries({ queryKey: queryKeys.likesAll });
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({ actor, entries, loadFailed, retry, sync }),

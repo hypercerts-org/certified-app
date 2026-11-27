@@ -11,7 +11,7 @@ import {
   Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
   ChevronDown,
@@ -36,13 +36,12 @@ import { toast } from "sonner";
 import { type ActorLike, ActorName, avatarOf } from "@/components/actor";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
 import { NewGroupDialog } from "@/components/group-dialogs";
-import { notifyActingAsChanged } from "@/components/like-button";
 import { LinkPending } from "@/components/link-pending";
 import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
 import { switchActingAs } from "@/lib/acting-as-actions";
 import { nameOf, type ProfileFields } from "@/lib/hypercerts/views";
-import type { Organization } from "@/lib/organizations";
+import { myOrganizationsQuery, queryKeys } from "@/lib/query-keys";
 import { groupSettingsHref } from "@/lib/routes";
 
 /** The signed-in account, as the header shows it. */
@@ -170,23 +169,13 @@ export function HeaderAccountMenus({ account }: { account: Account }) {
 
 // Account -------------------------------------------------------------------
 
-async function fetchOrganizations(): Promise<Organization[]> {
-  const response = await fetch("/api/me/organizations");
-  if (!response.ok) throw new Error(`Organizations request failed: ${response.status}`);
-  return ((await response.json()) as { organizations: Organization[] }).organizations;
-}
-
 /**
  * Your organizations, loaded as soon as the header shows (not when the menu
  * opens), so the list is complete by the time it does. Kept for five minutes,
  * like the server's cache of them.
  */
 function useOrganizations() {
-  return useQuery({
-    queryKey: ["me", "organizations"],
-    queryFn: fetchOrganizations,
-    staleTime: 5 * 60_000,
-  });
+  return useQuery(myOrganizationsQuery());
 }
 
 /** An identity you can act as: you, or an organization you belong to. */
@@ -210,6 +199,7 @@ function byline(account: Account): string | null {
  */
 function useSwitchActingAs(account: Account) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = useDecodedPathname();
   const [, startTransition] = useTransition();
 
@@ -224,7 +214,7 @@ function useSwitchActingAs(account: Account) {
         toast.error(`Couldn't switch to ${nameOf(target)}. Try again.`);
         return;
       }
-      notifyActingAsChanged();
+      void queryClient.resetQueries({ queryKey: queryKeys.likesAll });
       if (WORKSPACE_PATH.test(pathname)) toWorkspace(target.did);
       if (!previous) {
         toast(`Switched back to ${nameOf(target)}`);

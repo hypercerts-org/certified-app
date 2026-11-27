@@ -7,9 +7,10 @@
 // Field's props into it.
 
 import { Avatar, Combobox, ComboboxOption } from "@hypercerts-org/ui-react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { avatarOf } from "@/components/actor";
+import { type ActorPickerItem, actorPickerQuery } from "@/lib/query-keys";
 import type { SearchActorHit } from "@/lib/search";
 import { useSettled } from "@/lib/use-settled";
 
@@ -17,8 +18,6 @@ import { useSettled } from "@/lib/use-settled";
 const DEBOUNCE_MS = 200;
 /** Shorter than this, a search would match nearly everything. */
 const MIN_QUERY = 2;
-
-type ActorItem = SearchActorHit & { id: string };
 
 /** A pasted link or AT-URI is an answer already, not a search. */
 const isAddress = (q: string) => /^(https?|at):\/\//.test(q);
@@ -53,25 +52,12 @@ export function ActorPicker({
   const query = useSettled(value.trim(), DEBOUNCE_MS);
   const searching = query.length >= MIN_QUERY && !isAddress(query) && query !== picked;
 
-  const results = useQuery<ActorItem[]>({
-    queryKey: ["actor-picker", query],
-    queryFn: async ({ signal }) => {
-      const params = new URLSearchParams({ q: query, scope: "actors", limit: "6" });
-      const res = await fetch(`/api/search?${params}`, { signal });
-      if (!res.ok) throw new Error(`Search failed (${res.status})`);
-      const data = (await res.json()) as { actors?: SearchActorHit[] };
-      return (data.actors ?? []).map((actor) => ({ ...actor, id: actor.did }));
-    },
-    enabled: searching,
-    staleTime: 60_000,
-    // The last suggestions stay while the next ones load, so the list doesn't jump.
-    placeholderData: keepPreviousData,
-  });
+  const results = useQuery(actorPickerQuery(query, searching));
 
   const items = searching ? (results.data ?? []) : [];
 
   return (
-    <Combobox<ActorItem>
+    <Combobox<ActorPickerItem>
       {...field}
       label={label}
       value={value}

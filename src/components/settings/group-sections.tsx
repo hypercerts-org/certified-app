@@ -27,6 +27,7 @@ import {
   proposeGroupOwnershipTransfer,
 } from "@/lib/hypercerts/group-actions";
 import { nameOf } from "@/lib/hypercerts/views";
+import { queryKeys } from "@/lib/query-keys";
 import type { GroupMemberRow } from "./settings-access";
 import { SettingsAction, SettingsGroup, SettingsRow } from "./settings-frame";
 
@@ -113,7 +114,7 @@ export function GroupOwnershipSection({
         return;
       }
       setConfirmAccept(false);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       toast(`You are now the owner of ${groupName}`);
       setTransfer({ groupDid, pending: false });
       router.refresh();
@@ -434,7 +435,7 @@ export function GroupStatusSection({
         return;
       }
       setConfirmOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       toast(`${groupHandle ? `@${groupHandle}` : groupName} is now a regular account`);
       router.push(isSelfOwned ? "/settings" : "/workspace");
       router.refresh();

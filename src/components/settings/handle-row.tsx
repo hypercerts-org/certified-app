@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import { updateOwnHandle } from "@/lib/settings/account-actions";
 import type { SimpleResult } from "@/lib/settings/types";
 import { isHandle, isHandleLabel } from "@/lib/validate";
@@ -98,7 +99,7 @@ export function HandleRow({
       setHandle(next);
       setEditing(false);
       toast(`Handle updated to @${next}`);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       router.refresh();
     } finally {
       setSaving(false);
@@ -130,7 +131,7 @@ export function HandleRow({
       setHandle(normalizedDomain);
       setDomainStep("done");
       toast(`Handle updated to @${normalizedDomain}`);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       router.refresh();
     } finally {
       setVerifying(false);

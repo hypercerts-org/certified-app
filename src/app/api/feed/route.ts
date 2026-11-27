@@ -1,6 +1,7 @@
 import { connection, type NextRequest } from "next/server";
 import { getActingAs } from "@/lib/acting-as";
-import { getUser, SessionUnavailableError } from "@/lib/auth/dal";
+import { apiUnavailable, PRIVATE_NO_STORE_HEADERS } from "@/lib/api-response";
+import { getUser } from "@/lib/auth/dal";
 import {
   DEFAULT_ORG_QUALITY,
   FEED_EVENT_KINDS,
@@ -8,14 +9,13 @@ import {
   ORG_QUALITY_TIERS,
   type OrgQualityTier,
 } from "@/lib/feed-grouping";
-import { logError } from "@/lib/log";
 import { isDid } from "@/lib/validate";
 import { FeedServiceError, getNetworkFeed, getTrustedEvaluators } from "@/lib/views-service";
 
 const VALID_KINDS = new Set<string>(FEED_EVENT_KINDS);
 const VALID_ORG_TIERS = new Set<string>(ORG_QUALITY_TIERS);
 
-const privateHeaders = { "Cache-Control": "private, no-store" };
+const privateHeaders = PRIVATE_NO_STORE_HEADERS;
 
 /**
  * Signed-in network feed pages for pagination and live filter updates.
@@ -127,9 +127,6 @@ export async function GET(request: NextRequest) {
         { status: err.status, headers: privateHeaders },
       );
     }
-    if (!(err instanceof SessionUnavailableError)) {
-      logError("[api/feed] feed load failed", err);
-    }
-    return Response.json({ error: "Unavailable" }, { status: 503, headers: privateHeaders });
+    return apiUnavailable("[api/feed] feed load failed", err);
   }
 }

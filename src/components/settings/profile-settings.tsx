@@ -9,6 +9,7 @@ import { avatarOf } from "@/components/actor";
 import { saveProfileField } from "@/lib/hypercerts/profile-actions";
 import type { SavedPlace } from "@/lib/hypercerts/queries";
 import type { OrganizationDetails, ProfileDetails } from "@/lib/hypercerts/writes";
+import { queryKeys } from "@/lib/query-keys";
 import { safeUrl } from "@/lib/safe-url";
 import { OrganizationProfileSection } from "./organization-profile-section";
 import { NotSet, ProfileMediaRow, parseTags } from "./profile-media-row";
@@ -90,7 +91,7 @@ export function ProfileSettings({
       setProfile(result.data);
       setEditing(null);
       toast.success(successMessage);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       router.refresh();
     } finally {
       setSaving(false);

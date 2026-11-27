@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { NewGroupDialog } from "@/components/group-dialogs";
+import { queryKeys } from "@/lib/query-keys";
 import { groupSettingsHref } from "@/lib/routes";
 import { promotePersonalAccountToGroup } from "@/lib/settings/group-import-action";
 import { SettingsAction, SettingsGroup, SettingsRow } from "./settings-frame";
@@ -42,7 +43,7 @@ export function ImportAsGroupSection({
       return { ok: false, message: res.message };
     }
     if (res.status === "ok") {
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       toast(`@${res.handle || handle || did} is now a group`);
       router.push(groupSettingsHref(res.groupDid));
       router.refresh();

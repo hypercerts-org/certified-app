@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { PUBLIC_CACHE_HEADERS } from "@/lib/api-response";
 import {
   exploreAccounts,
   exploreActivities,
@@ -36,7 +37,7 @@ import { isDid, isHandle } from "@/lib/validate";
 
 const MAX_QUERY = 200;
 const PUBLIC_BSKY_APPVIEW = "https://public.api.bsky.app";
-const cacheHeaders = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
+const cacheHeaders = PUBLIC_CACHE_HEADERS;
 
 type RawBlueskyActor = {
   did?: string;
@@ -159,7 +160,7 @@ export async function GET(request: NextRequest) {
   }
 
   const empty: SearchResults = { go: null, activities: [], projects: [], accounts: [] };
-  if (!query) return Response.json(empty);
+  if (!query) return Response.json(empty, { headers: cacheHeaders });
 
   const options = { query, sort: "newest", limit: SEARCH_CANDIDATES } as const;
   const [activities, projects, accounts, bluesky] = await Promise.all([

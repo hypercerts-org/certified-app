@@ -7,14 +7,32 @@ import { Toaster } from "sonner";
 import { IntentLink } from "@/components/intent-link";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { ThemeSync } from "@/components/theme-control";
+import { HttpError } from "@/lib/query-keys";
 
-// TanStack Query: "load more" lists, the write overlay's index polling and
-// the forms' mutations. As in the Next.js guide: a new client per server
-// render, one client in the browser.
+// TanStack Query backs client-side reads and coordination: paginated lists
+// ("Load more"), live search/picker typeahead, the user's organizations,
+// batched timeline likes, and place lookups. As in the Next.js guide: a new
+// client per server render, one singleton client in the browser.
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: (failureCount, error) => {
+          if (error instanceof HttpError && error.status >= 400 && error.status < 500) {
+            return false;
+          }
+          return failureCount < 1;
+        },
+      },
+    },
+  });
+}
+
 let browserQueryClient: QueryClient | undefined;
 function getQueryClient() {
-  if (typeof window === "undefined") return new QueryClient();
-  browserQueryClient ??= new QueryClient();
+  if (typeof window === "undefined") return makeQueryClient();
+  browserQueryClient ??= makeQueryClient();
   return browserQueryClient;
 }
 

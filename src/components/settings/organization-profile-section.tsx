@@ -24,6 +24,7 @@ import { saveOrganizationField } from "@/lib/hypercerts/profile-actions";
 import type { SavedPlace } from "@/lib/hypercerts/queries";
 import type { OrganizationDetails, OrganizationUrlItem } from "@/lib/hypercerts/writes";
 import type { LocationChoice } from "@/lib/location-choice";
+import { queryKeys } from "@/lib/query-keys";
 import { safeUrl } from "@/lib/safe-url";
 import { NotSet, ProfileMediaRow, parseTags } from "./profile-media-row";
 import { SettingsAction, SettingsGroup, SettingsRow } from "./settings-frame";
@@ -188,7 +189,7 @@ export function OrganizationProfileSection({
       if (nextLocationName !== undefined) setLocationName(nextLocationName);
       setEditing(null);
       toast.success(successMessage);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       router.refresh();
     } finally {
       setSaving(false);

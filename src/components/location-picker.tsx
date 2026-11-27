@@ -20,13 +20,14 @@ import {
   SegmentedControl,
   Text,
 } from "@hypercerts-org/ui-react";
+import { useQuery } from "@tanstack/react-query";
 import { MapPin, Pencil, X } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { LocationMap } from "@/components/location-map";
 import type { SavedPlace } from "@/lib/hypercerts/queries";
 import { LOCATION_NAME_MAX, type LocationChoice, type Point } from "@/lib/location-choice";
-
-type PlaceHit = { id: string; name: string; lat: number; lng: number };
+import { type PlaceHit, placeSearchQuery } from "@/lib/query-keys";
+import { useSettled } from "@/lib/use-settled";
 
 /** How long typing must pause before a search, in milliseconds. */
 const SEARCH_PAUSE = 500;
@@ -208,43 +209,20 @@ function NewPlace({
   onName: (name: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<PlaceHit[]>([]);
   const [open, setOpen] = useState(false);
-  const [searching, setSearching] = useState(false);
   const [naming, setNaming] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  const dropAbortRef = useRef<AbortController | null>(null);
 
-  // Search once typing pauses; a newer query cancels the older one.
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 3) {
-      setHits([]);
-      return;
-    }
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setSearching(true);
-      try {
-        const response = await fetch(`/api/places?${new URLSearchParams({ q })}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(String(response.status));
-        const body = (await response.json()) as { places: Omit<PlaceHit, "id">[] };
-        setHits(body.places.map((place, i) => ({ ...place, id: `place-${i}` })));
-        setProblem(null);
-      } catch {
-        if (!controller.signal.aborted) {
-          setProblem("Places can't be searched right now. Click the map instead.");
-        }
-      } finally {
-        if (!controller.signal.aborted) setSearching(false);
-      }
-    }, SEARCH_PAUSE);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query]);
+  const settled = useSettled(query.trim(), SEARCH_PAUSE);
+  const canSearch = settled.length >= 3;
+  const search = useQuery(placeSearchQuery(settled, canSearch));
+  const hits = canSearch ? (search.data ?? []) : [];
+  const problem =
+    canSearch && search.isError
+      ? "Places can't be searched right now. Click the map instead."
+      : null;
+
+  useEffect(() => () => dropAbortRef.current?.abort(), []);
 
   const choose = (hit: PlaceHit) => {
     onPoint({ lat: hit.lat, lng: hit.lng });
@@ -253,19 +231,32 @@ function NewPlace({
     setOpen(false);
   };
 
-  // A dropped pin is named after what is there; the name can be changed.
+  // A dropped pin is named after what is there; rapid clicks abort stale lookups.
   const drop = async (at: Point) => {
+    dropAbortRef.current?.abort();
+    const controller = new AbortController();
+    dropAbortRef.current = controller;
     const next = { lat: round(at.lat), lng: round(at.lng) };
     onPoint(next);
     setNaming(true);
     try {
       const response = await fetch(
         `/api/places?${new URLSearchParams({ lat: String(next.lat), lng: String(next.lng) })}`,
+        { signal: controller.signal },
       );
       const body = response.ok ? ((await response.json()) as { name: string | null }) : null;
-      onName((body?.name ?? `${next.lat}, ${next.lng}`).slice(0, LOCATION_NAME_MAX));
+      if (!controller.signal.aborted) {
+        onName((body?.name ?? `${next.lat}, ${next.lng}`).slice(0, LOCATION_NAME_MAX));
+      }
+    } catch {
+      if (!controller.signal.aborted) {
+        onName(`${next.lat}, ${next.lng}`.slice(0, LOCATION_NAME_MAX));
+      }
     } finally {
-      setNaming(false);
+      if (dropAbortRef.current === controller) {
+        dropAbortRef.current = null;
+        setNaming(false);
+      }
     }
   };
 
@@ -282,7 +273,7 @@ function NewPlace({
         items={hits}
         open={open && query.trim().length >= 3}
         onOpenChange={setOpen}
-        loading={searching}
+        loading={canSearch && search.isFetching}
         emptyMessage="No places found."
         escapeStage="close-only"
         onSelect={choose}

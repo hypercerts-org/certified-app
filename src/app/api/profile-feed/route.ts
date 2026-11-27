@@ -1,15 +1,10 @@
 import type { NextRequest } from "next/server";
-
+import { apiUnavailable, PUBLIC_CACHE_HEADERS } from "@/lib/api-response";
 import { getProfileFeed } from "@/lib/hypercerts/queries";
-import { logError } from "@/lib/log";
 import { isDid } from "@/lib/validate";
 
 // Later pages of a profile's feed, for "Load more". Public data, so the CDN
 // may cache each page briefly.
-const cacheHeaders = {
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=600",
-};
-
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const did = params.get("did");
@@ -20,12 +15,13 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "InvalidCursor" }, { status: 400 });
   }
   try {
-    return Response.json(await getProfileFeed(did, cursor || undefined), { headers: cacheHeaders });
+    return Response.json(await getProfileFeed(did, cursor || undefined), {
+      headers: PUBLIC_CACHE_HEADERS,
+    });
   } catch (err) {
-    logError("[profile-feed] GET /api/profile-feed failed", err, { did });
-    return Response.json(
-      { error: "ProfileFeedUnavailable" },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
+    return apiUnavailable("[profile-feed] GET /api/profile-feed failed", err, {
+      error: "ProfileFeedUnavailable",
+      context: { did },
+    });
   }
 }

@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -53,7 +54,7 @@ describe("GET /api/likes", () => {
       [uriA]: `at://${actorDid}/app.certified.feed.like/l1`,
     });
 
-    const res = await GET(new Request(`http://localhost:3000/api/likes?${params.toString()}`));
+    const res = await GET(new NextRequest(`http://localhost:3000/api/likes?${params.toString()}`));
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("private, no-store");
 
@@ -79,7 +80,7 @@ describe("GET /api/likes", () => {
     mocks.getLikeCounts.mockResolvedValueOnce({ [uriA]: 2 });
 
     const res = await GET(
-      new Request(`http://localhost:3000/api/likes?subjects=${encodeURIComponent(uriA)}`),
+      new NextRequest(`http://localhost:3000/api/likes?subjects=${encodeURIComponent(uriA)}`),
     );
     expect(res.status).toBe(200);
     expect(mocks.getActorLikesForSubjects).not.toHaveBeenCalled();
@@ -93,7 +94,7 @@ describe("GET /api/likes", () => {
     mocks.getLikeCounts.mockRejectedValueOnce(new Error("indexer down"));
 
     const res = await GET(
-      new Request(`http://localhost:3000/api/likes?subjects=${encodeURIComponent(uriA)}`),
+      new NextRequest(`http://localhost:3000/api/likes?subjects=${encodeURIComponent(uriA)}`),
     );
     expect(res.status).toBe(503);
     expect(res.headers.get("cache-control")).toBe("private, no-store");

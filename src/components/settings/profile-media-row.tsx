@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { type ChangeEvent, type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 import { saveProfileMedia } from "@/lib/hypercerts/profile-actions";
+import { queryKeys } from "@/lib/query-keys";
 import { SettingsAction, SettingsRow } from "./settings-frame";
 
 const MAX_SMALL_IMAGE = 5_000_000;
@@ -91,7 +92,7 @@ export function ProfileMediaRow({
       }
       onChange({ cid: result.cid, url: result.url });
       toast.success(updatedToast);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       router.refresh();
     } finally {
       setBusy(null);
@@ -115,7 +116,7 @@ export function ProfileMediaRow({
       }
       onChange({ cid: result.cid, url: null });
       toast.success(removedToast);
-      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myOrganizations });
       router.refresh();
     } finally {
       setBusy(null);

@@ -44,13 +44,13 @@ describe("GET /api/profile-feed", () => {
     expect(await res.json()).toEqual({ items: [{ id: "1" }], cursor: "next_1" });
   });
 
-  it("returns 503 with Cache-Control: no-store when upstream fails", async () => {
+  it("returns 503 with private no-store when upstream fails", async () => {
     mocks.getProfileFeed.mockRejectedValueOnce(new Error("indexer unavailable"));
     const res = await GET(
       new NextRequest(`http://localhost:3000/api/profile-feed?did=${validDid}`),
     );
     expect(res.status).toBe(503);
-    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(await res.json()).toEqual({ error: "ProfileFeedUnavailable" });
   });
 });

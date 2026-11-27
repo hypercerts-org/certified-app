@@ -1,12 +1,10 @@
-import { connection, NextResponse } from "next/server";
+import { connection, type NextRequest } from "next/server";
 import { getActingAs } from "@/lib/acting-as";
-import { SessionUnavailableError } from "@/lib/auth/dal";
+import { apiUnavailable, PRIVATE_NO_STORE_HEADERS } from "@/lib/api-response";
 import { getActorLikesForSubjects, getLikeCounts } from "@/lib/hypercerts/queries";
-import { logError } from "@/lib/log";
 import { isAtUri } from "@/lib/validate";
 
 const MAX_SUBJECTS = 50;
-const privateHeaders = { "Cache-Control": "private, no-store" };
 
 /**
  * GET /api/likes?subjects=at://...&subjects=at://...
@@ -15,10 +13,9 @@ const privateHeaders = { "Cache-Control": "private, no-store" };
  * URI for each requested subject AT-URI. Keeps public timelines statically
  * cached while letting client timelines hydrate likes in one request.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   await connection();
-  const { searchParams } = new URL(request.url);
-  const raw = searchParams.getAll("subjects");
+  const raw = request.nextUrl.searchParams.getAll("subjects");
   const subjects = [...new Set(raw.flatMap((v) => v.split(",")).map((s) => s.trim()))]
     .filter((s) => isAtUri(s))
     .slice(0, MAX_SUBJECTS)
@@ -27,7 +24,7 @@ export async function GET(request: Request) {
   try {
     const actor = await getActingAs();
     if (subjects.length === 0) {
-      return NextResponse.json({ actor, likes: {} }, { headers: privateHeaders });
+      return Response.json({ actor, likes: {} }, { headers: PRIVATE_NO_STORE_HEADERS });
     }
 
     const [counts, actorLikes] = await Promise.all([
@@ -45,14 +42,11 @@ export async function GET(request: Request) {
       };
     }
 
-    return NextResponse.json({ actor, likes }, { headers: privateHeaders });
+    return Response.json({ actor, likes }, { headers: PRIVATE_NO_STORE_HEADERS });
   } catch (err) {
-    if (!(err instanceof SessionUnavailableError)) {
-      logError("[likes] GET /api/likes failed", err, { count: subjects.length });
-    }
-    return NextResponse.json(
-      { error: "LikesUnavailable" },
-      { status: 503, headers: privateHeaders },
-    );
+    return apiUnavailable("[likes] GET /api/likes failed", err, {
+      error: "LikesUnavailable",
+      context: { count: subjects.length },
+    });
   }
 }

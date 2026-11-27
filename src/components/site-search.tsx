@@ -18,12 +18,13 @@ import {
   ComboboxOption,
   ResponsiveDialog,
 } from "@hypercerts-org/ui-react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Folder, Search, SquareCheckBig } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { avatarOf } from "@/components/actor";
-import type { SearchResults, SearchRow } from "@/lib/search";
+import { sidebarSearchQuery } from "@/lib/query-keys";
+import type { SearchRow } from "@/lib/search";
 import { useSettled } from "@/lib/use-settled";
 
 /** Keystrokes settle this long before a search goes out. */
@@ -108,18 +109,7 @@ function SearchBox({
     return () => window.removeEventListener("keydown", onKey);
   }, [withShortcut, inline]);
 
-  const results = useQuery<SearchResults>({
-    queryKey: ["sidebar-search", query],
-    queryFn: async ({ signal }) => {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal });
-      if (!res.ok) throw new Error(`Search failed (${res.status})`);
-      return res.json();
-    },
-    enabled: searching,
-    staleTime: 60_000,
-    // The last results stay while the next ones load, so the list doesn't jump.
-    placeholderData: keepPreviousData,
-  });
+  const results = useQuery(sidebarSearchQuery(query, searching));
 
   const data = searching ? results.data : undefined;
   const items: Item[] = searching
