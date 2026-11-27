@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/page-title";
 import { pageMetadata } from "@/lib/seo";
 
+export const ensureStatic = "prefetch";
+
 export const metadata = pageMetadata({
   title: "Privacy Policy",
   description:

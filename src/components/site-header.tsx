@@ -9,7 +9,8 @@ import { Wordmark } from "@/components/wordmark";
 import { getActingAs } from "@/lib/acting-as";
 import { CERTIFIED_PDS_URL } from "@/lib/auth/config";
 import { getUser } from "@/lib/auth/dal";
-import { getActor } from "@/lib/hypercerts/queries";
+import { getActorCore } from "@/lib/hypercerts/queries";
+import { getHandle } from "@/lib/identity";
 import { logError } from "@/lib/log";
 
 // The site's top bar, full width (and, on phones, its bottom tab bar), below
@@ -128,12 +129,20 @@ async function readAccount(): Promise<Account | null> {
   if (!user) return null;
 
   // An account that has never written a Certified profile has no API view.
-  const [actor, actingAs] = await Promise.all([getActor(user.did), getActingAs()]);
-  const organization = actingAs && actingAs !== user.did ? await getActor(actingAs) : undefined;
+  // Skip getActorPlace (geocoding): navigation chrome never displays a place.
+  const [actor, handle, actingAs] = await Promise.all([
+    getActorCore(user.did),
+    getHandle(user.did),
+    getActingAs(),
+  ]);
+  const [organization, orgHandle] =
+    actingAs && actingAs !== user.did
+      ? await Promise.all([getActorCore(actingAs), getHandle(actingAs)])
+      : [undefined, null];
   return {
     did: user.did,
     displayName: actor?.displayName ?? user.did,
-    handle: actor?.handle ?? null,
+    handle,
     avatarUrl: actor?.avatarUrl ?? null,
     isOrganization: actor?.isOrganization,
     pdsDomain: new URL(CERTIFIED_PDS_URL).hostname,
@@ -142,7 +151,7 @@ async function readAccount(): Promise<Account | null> {
       actingAs && actingAs !== user.did
         ? {
             did: actingAs,
-            handle: organization?.handle ?? null,
+            handle: orgHandle,
             displayName: organization?.displayName ?? actingAs,
             avatarUrl: organization?.avatarUrl ?? null,
             isOrganization: true,

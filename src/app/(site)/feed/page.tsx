@@ -16,6 +16,8 @@ import { getNetworkFeed, getTrustedEvaluators } from "@/lib/views-service";
 // line), the trusted endorsers (the filters' list) and the first page (the
 // feed), each behind its own skeleton. Nothing here is awaited at the top.
 
+export const ensureStatic = "prefetch";
+
 export const metadata: Metadata = {
   title: "Feed",
   robots: { index: false },
@@ -40,11 +42,11 @@ async function loadViewer(): Promise<FeedViewer | null> {
 /** The first page for the default filters; null when the service fails (the client retries). */
 async function loadFirstPage(
   viewer: Promise<FeedViewer | null>,
+  evaluatorsPromise: ReturnType<typeof getTrustedEvaluators>,
 ): Promise<Page<NetworkFeedEntry> | null> {
-  const v = await viewer;
+  const [v, evaluators] = await Promise.all([viewer, evaluatorsPromise]);
   if (!v) return null;
   try {
-    const evaluators = await getTrustedEvaluators();
     return await getNetworkFeed({
       viewerDid: v.viewerDid,
       trustedEvaluators: evaluators.map((e) => e.did),
@@ -65,6 +67,7 @@ async function SignedInOnly() {
 
 export default function FeedPage() {
   const viewer = loadViewer();
+  const evaluators = getTrustedEvaluators();
   return (
     <>
       <Suspense fallback={null}>
@@ -72,8 +75,8 @@ export default function FeedPage() {
       </Suspense>
       <NetworkFeed
         viewer={viewer}
-        evaluators={getTrustedEvaluators()}
-        firstPage={loadFirstPage(viewer)}
+        evaluators={evaluators}
+        firstPage={loadFirstPage(viewer, evaluators)}
       />
     </>
   );

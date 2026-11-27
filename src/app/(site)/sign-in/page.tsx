@@ -9,6 +9,8 @@ import { getUser } from "@/lib/auth/dal";
 import type { SignInError } from "@/lib/auth/start-sign-in";
 import { returnPath } from "@/lib/validate";
 
+export const ensureStatic = "prefetch";
+
 export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
 
 // Where pages that need a signed-in visitor send them, and where a sign-in

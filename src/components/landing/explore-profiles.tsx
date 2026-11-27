@@ -4,7 +4,8 @@ import { unstable_rethrow } from "next/navigation";
 import { ActorName, avatarOf } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import LpArrow from "@/components/landing/lp-arrow";
-import { getActor } from "@/lib/hypercerts/queries";
+import { getActorCore } from "@/lib/hypercerts/queries";
+import { getHandle } from "@/lib/identity";
 import { logError } from "@/lib/log";
 
 /** Three profiles from the founding community, as on staging. */
@@ -33,14 +34,17 @@ const FEATURED = [
  */
 export default async function ExploreProfiles() {
   const profiles = await Promise.all(
-    FEATURED.map(async (featured) => ({
-      featured,
-      actor: await getActor(featured.did).catch((err) => {
-        unstable_rethrow(err);
-        logError("[landing] featured profile lookup failed", err, { did: featured.did });
-        return null;
-      }),
-    })),
+    FEATURED.map(async (featured) => {
+      const [actor, handle] = await Promise.all([
+        getActorCore(featured.did).catch((err) => {
+          unstable_rethrow(err);
+          logError("[landing] featured profile lookup failed", err, { did: featured.did });
+          return null;
+        }),
+        getHandle(featured.did),
+      ]);
+      return { featured, actor: actor ? { ...actor, handle } : null };
+    }),
   );
   return (
     <section className="lp-section" aria-labelledby="lp-explore-title">

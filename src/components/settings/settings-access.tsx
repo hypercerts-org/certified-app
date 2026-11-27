@@ -14,7 +14,7 @@ import {
   type Membership,
   type OwnershipTransferStatus,
 } from "@/lib/cgs";
-import { getActor, getActorCards } from "@/lib/hypercerts/queries";
+import { getActorCards, getActorCore } from "@/lib/hypercerts/queries";
 import { type ActorCard, nameOf } from "@/lib/hypercerts/views";
 import { getDid, getHandle } from "@/lib/identity";
 import { logError } from "@/lib/log";
@@ -253,13 +253,12 @@ export async function requireGroupSettings(
 
 /** Group display name, verified handle, and actor detail, cached per request. */
 export const loadGroupIdentity = cache(async (groupDid: l.DidString) => {
-  const [actor, resolvedHandle] = await Promise.all([
-    getActor(groupDid).catch(() => null),
+  const [actor, handle] = await Promise.all([
+    getActorCore(groupDid).catch(() => null),
     getHandle(groupDid),
   ]);
-  const handle = resolvedHandle ?? actor?.handle ?? null;
-  const name = actor ? nameOf(actor) : handle ? `@${handle}` : groupDid;
-  return { name, handle, actor };
+  const name = actor ? nameOf({ ...actor, handle }) : handle ? `@${handle}` : groupDid;
+  return { name, handle, actor: actor ? { ...actor, handle } : null };
 });
 
 /** Group members with resolved actor cards, sorted Owner → Admin → Member. */

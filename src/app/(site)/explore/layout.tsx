@@ -3,6 +3,8 @@ import { ExploreTabs, ExploreTabsSkeleton } from "@/components/explore-toolbar";
 import { PageHeader } from "@/components/page-title";
 import { pageMetadata } from "@/lib/seo";
 
+export const ensureStatic = "prefetch";
+
 export const metadata = pageMetadata({
   title: "Explore",
   description: "Activities, projects and accounts across the Certified network.",

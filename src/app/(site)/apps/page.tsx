@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/page-title";
 import { APPS } from "@/lib/apps";
 import { pageMetadata } from "@/lib/seo";
 
+export const ensureStatic = "prefetch";
+
 export const metadata = pageMetadata({
   title: "Apps",
   description: "Apps you can sign in to with your Certified account.",

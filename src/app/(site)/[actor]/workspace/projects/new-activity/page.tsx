@@ -5,8 +5,9 @@ import { workspaceHref } from "@/components/cards";
 import { PageHeader } from "@/components/page-title";
 import { RecordFormSkeleton } from "@/components/record-form";
 import { workspaceDid } from "@/components/workspace-access";
-import { getActor, listSavedPlaces } from "@/lib/hypercerts/queries";
+import { getActorCore, listSavedPlaces } from "@/lib/hypercerts/queries";
 import { nameOf } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 
 export const metadata: Metadata = { title: "New activity", robots: { index: false } };
 
@@ -17,12 +18,16 @@ export const metadata: Metadata = { title: "New activity", robots: { index: fals
 async function NewActivity({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
   if (!did) return null; // no access: the workspace layout says why
-  const [actor, places] = await Promise.all([getActor(did), listSavedPlaces(did)]);
+  const [actor, handle, places] = await Promise.all([
+    getActorCore(did),
+    getHandle(did),
+    listSavedPlaces(did),
+  ]);
   return (
     <ActivityForm
       repo={did}
-      self={actor?.handle ?? did}
-      selfName={actor?.isOrganization ? nameOf(actor) : null}
+      self={handle ?? did}
+      selfName={actor?.isOrganization ? nameOf({ ...actor, handle }) : null}
       places={places}
       cancelHref={`${workspaceHref(did)}/projects`}
     />

@@ -43,13 +43,14 @@ import { ActivityRow, ProjectRow, RecordRowSkeleton } from "@/components/records
 import { StatRow } from "@/components/stat-row";
 import { APPS } from "@/lib/apps";
 import {
-  getActor,
+  getActorCore,
   getEndorsements,
   getFollowCounts,
   getRecordCounts,
   listLatestRecords,
 } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, endorsementLine, nameOf } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 import type { Organization } from "@/lib/organizations";
 import { groupSettingsHref } from "@/lib/routes";
 
@@ -367,14 +368,26 @@ function firstLine(text: string | null): string | null {
   );
 }
 
+async function IdentityHandleFact({ did }: { did: string }) {
+  const handle = await getHandle(did);
+  if (!handle) return null;
+  return (
+    <div className="fact">
+      <dt>Handle</dt>
+      <dd>
+        <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" wrap />
+      </dd>
+    </div>
+  );
+}
+
 async function IdentityBox({ did }: { did: string }) {
-  return <IdentityView did={did} actor={await getActor(did)} />;
+  return <IdentityView did={did} actor={await getActorCore(did)} />;
 }
 
 function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }) {
-  const handle = actor?.handle ?? null;
   // An account the index doesn't know yet: by its DID.
-  const account = actor ?? { did, handle, displayName: did, avatarUrl: null };
+  const account = actor ?? { did, handle: null, displayName: did, avatarUrl: null };
   const bio = firstLine(actor?.description ?? null);
   const website = actor?.website ?? null;
 
@@ -410,14 +423,9 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
         </div>
       </div>
       <dl className="facts">
-        {handle && (
-          <div className="fact">
-            <dt>Handle</dt>
-            <dd>
-              <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" wrap />
-            </dd>
-          </div>
-        )}
+        <Suspense fallback={null}>
+          <IdentityHandleFact did={did} />
+        </Suspense>
         <div className="fact">
           <dt>Permanent ID</dt>
           <dd>

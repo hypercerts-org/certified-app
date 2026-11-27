@@ -7,6 +7,10 @@ import { WorkspaceNav, WorkspaceNavView } from "@/components/workspace-nav";
 import { groupSettingsHref } from "@/lib/routes";
 import { isDid } from "@/lib/validate";
 
+// Keep the App Shell static so default links never trigger runtime server
+// renders; signed-in sidebar/nav links with `prefetch` still prefetch per user.
+export const ensureStatic = "shell";
+
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
   let did = "";
   try {

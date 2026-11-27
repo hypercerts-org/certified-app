@@ -6,6 +6,8 @@ import { getUser } from "@/lib/auth/dal";
 import { groupSettingsHref } from "@/lib/routes";
 import { isDid, signInHref } from "@/lib/validate";
 
+export const ensureStatic = "shell";
+
 export const metadata: Metadata = { title: "Edit profile", robots: { index: false } };
 
 async function RedirectToProfileSettings({

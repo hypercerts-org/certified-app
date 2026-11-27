@@ -173,9 +173,9 @@ Before judging a Next.js API, read its guide in
 - C2. Every click shows at once: a new tab bar or nav uses `LinkPending`
   in its links; a new route segment that loads data has a `loading.tsx`
   shaped like its content.
-- C3. `<Link prefetch>` only on short navigation (tabs, sidebar, a few
-  stat links). Links in lists, grids and cards use `IntentLink` (or a
-  design-system component, which uses it).
+- C3. `<Link prefetch>` only on top-level navigation (sidebar, Explore tabs).
+  Links in lists, grids, cards, figures and profile/record tabs use `IntentLink`
+  (or a design-system component, which uses it).
 - C4. A redirect that must be a real HTTP redirect (an entry URL) goes in
   `src/proxy.ts` or `next.config.ts`, not in a streamed component.
 - C5. A new segment that fetches has an error boundary at or above it;
@@ -190,6 +190,19 @@ Before judging a Next.js API, read its guide in
   Suspense fallback or `loading.tsx` is built from those skeletons, with
   static parts (titles, tab labels) as themselves. Grep the change for
   `variant="text" lines=` used as a page's placeholder: it is a finding.
+- C10. Every route exports `ensureStatic`: `"prefetch"` on public routes
+  (with `generateStaticParams` on dynamic public routes) and `"shell"` on
+  authenticated routes (`workspace`, `settings`, `edit`), so `SiteLayout`'s
+  cookie reads never force `RuntimeShell` (`p=3`) server renders for links.
+  In-place URL updates (DID-to-handle canonicalization, view-mode switches)
+  use `window.history.replaceState(null, "", url)`, not `router.replace`.
+- C11. Headers, layouts and non-location views never call `getActor()`
+  (which also geocodes an organization's place): use `getActorCore()` and
+  `getHandle()` independently, stream slow/per-viewer pieces behind static
+  fallbacks (`VisitorActions`, `RecordActionsFallback`, `RouteTabs`), and
+  start independent queries in parallel (`Promise.all`). Reserve
+  `'use cache: remote'` for slow/rate-limited external lookups (`identity`,
+  `geocode`, `blobs`, `also-on`).
 
 ### D. UI toolkit, typography and CSS
 

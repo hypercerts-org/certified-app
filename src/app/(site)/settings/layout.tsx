@@ -11,9 +11,12 @@ import {
 } from "@/components/settings/settings-access";
 import { SettingsHashRedirect } from "@/components/settings/settings-hash-redirect";
 import { SettingsHeader, SettingsHeaderSkeleton } from "@/components/settings/settings-header";
-import { getActor } from "@/lib/hypercerts/queries";
+import { getActorCore } from "@/lib/hypercerts/queries";
+import { getHandle } from "@/lib/identity";
 import { groupSettingsHref } from "@/lib/routes";
 import { signInHref } from "@/lib/validate";
+
+export const ensureStatic = "shell";
 
 export const metadata: Metadata = {
   title: { default: "Settings", template: "%s · Settings | Certified" },
@@ -39,6 +42,28 @@ const LEGACY_HASHES: Readonly<Record<string, string>> = {
   groups: "/settings/groups",
 };
 
+async function PersonalSettingsHeader({ did }: { did: string }) {
+  const [actor, handle] = await Promise.all([getActorCore(did).catch(() => null), getHandle(did)]);
+  const avatarActor = {
+    did,
+    handle,
+    displayName: actor?.displayName ?? "",
+    avatarUrl: actor?.avatarUrl ?? null,
+    isOrganization: actor?.isOrganization ?? false,
+  };
+  return (
+    <SettingsHeader
+      title="Personal settings"
+      actor={avatarActor}
+      actions={
+        <Button href={actorHref({ did, handle })} variant="secondary" size="sm">
+          View profile
+        </Button>
+      }
+    />
+  );
+}
+
 async function PersonalSettingsGate({ children }: { children: ReactNode }) {
   const access = await personalSettingsAccess();
   if (access.status === "signed-out") redirect(signInHref("/settings"));
@@ -47,26 +72,11 @@ async function PersonalSettingsGate({ children }: { children: ReactNode }) {
     return <SettingsAccessFallback kind={access.status} path="/settings" />;
   }
 
-  const actor = await getActor(access.user.did).catch(() => null);
-  const avatarActor = {
-    did: access.user.did,
-    handle: actor?.handle ?? null,
-    displayName: actor?.displayName ?? "",
-    avatarUrl: actor?.avatarUrl ?? null,
-    isOrganization: actor?.isOrganization ?? false,
-  };
-
   return (
     <div className="page">
-      <SettingsHeader
-        title="Personal settings"
-        actor={avatarActor}
-        actions={
-          <Button href={actorHref(actor ?? access.user.did)} variant="secondary" size="sm">
-            View profile
-          </Button>
-        }
-      />
+      <Suspense fallback={<SettingsHeaderSkeleton title="Personal settings" />}>
+        <PersonalSettingsHeader did={access.user.did} />
+      </Suspense>
       <SettingsHashRedirect routes={LEGACY_HASHES} />
       <ProfileTabs label="Settings sections" tabs={PERSONAL_TABS} />
       {children}

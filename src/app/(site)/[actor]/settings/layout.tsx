@@ -1,3 +1,4 @@
+import type { l } from "@atproto/lex";
 import { Button } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -16,10 +17,40 @@ import { SettingsHashRedirect } from "@/components/settings/settings-hash-redire
 import { SettingsHeader, SettingsHeaderSkeleton } from "@/components/settings/settings-header";
 import { signInHref } from "@/lib/validate";
 
+export const ensureStatic = "shell";
+
 export const metadata: Metadata = {
   title: { default: "Group settings", template: "%s · Group settings | Certified" },
   robots: { index: false },
 };
+
+async function GroupSettingsHeader({ groupDid, role }: { groupDid: l.DidString; role: string }) {
+  const { name, handle, actor } = await loadGroupIdentity(groupDid);
+  const avatarActor = {
+    did: groupDid,
+    handle,
+    displayName: actor?.displayName ?? name,
+    avatarUrl: actor?.avatarUrl ?? null,
+    isOrganization: true,
+  };
+  return (
+    <SettingsHeader
+      title="Group settings"
+      actor={avatarActor}
+      note={ROLE_PHRASE[role] ?? "You belong to this group."}
+      actions={
+        <>
+          <Button href={actorHref({ did: groupDid, handle })} variant="secondary" size="sm">
+            View profile
+          </Button>
+          <Button href={workspaceHref(groupDid)} variant="secondary" size="sm">
+            Open workspace
+          </Button>
+        </>
+      }
+    />
+  );
+}
 
 async function GroupSettingsGate({
   params,
@@ -41,7 +72,6 @@ async function GroupSettingsGate({
     return <SettingsAccessFallback kind={access.status} path={base} groupDid={groupDid} />;
   }
 
-  const { name, handle, actor } = await loadGroupIdentity(groupDid);
   const canEditProfile = access.isAdmin || access.isSelfOwned;
 
   const tabs: ProfileTab[] = [
@@ -61,31 +91,11 @@ async function GroupSettingsGate({
       : {}),
   };
 
-  const avatarActor = {
-    did: groupDid,
-    handle,
-    displayName: actor?.displayName ?? name,
-    avatarUrl: actor?.avatarUrl ?? null,
-    isOrganization: true,
-  };
-
   return (
     <div className="page">
-      <SettingsHeader
-        title="Group settings"
-        actor={avatarActor}
-        note={ROLE_PHRASE[access.role] ?? "You belong to this group."}
-        actions={
-          <>
-            <Button href={actorHref(actor ?? groupDid)} variant="secondary" size="sm">
-              View profile
-            </Button>
-            <Button href={workspaceHref(groupDid)} variant="secondary" size="sm">
-              Open workspace
-            </Button>
-          </>
-        }
-      />
+      <Suspense fallback={<SettingsHeaderSkeleton title="Group settings" />}>
+        <GroupSettingsHeader groupDid={groupDid} role={access.role} />
+      </Suspense>
       <SettingsHashRedirect routes={legacyHashes} />
       <ProfileTabs label="Group settings sections" tabs={tabs} />
       {children}

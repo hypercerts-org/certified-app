@@ -7,9 +7,10 @@ import { PageHeader } from "@/components/page-title";
 import { RecordEditor } from "@/components/record-editor";
 import { RecordFormSkeleton } from "@/components/record-form";
 import { workspaceDid } from "@/components/workspace-access";
-import { getActor, listSavedPlaces } from "@/lib/hypercerts/queries";
+import { getActorCore, listSavedPlaces } from "@/lib/hypercerts/queries";
 import { activityForEditing } from "@/lib/hypercerts/record-drafts";
 import { nameOf } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 import { isRkey } from "@/lib/validate";
 
 export const metadata: Metadata = { title: "Edit activity", robots: { index: false } };
@@ -30,17 +31,18 @@ async function EditActivity({ params }: { params: Promise<{ actor: string; rkey:
       what="activity"
     >
       {async (repository) => {
-        const [editing, actor, places] = await Promise.all([
+        const [editing, actor, handle, places] = await Promise.all([
           activityForEditing(repository, rkey),
-          getActor(did),
+          getActorCore(did),
+          getHandle(did),
           listSavedPlaces(did),
         ]);
         if (!editing) notFound();
         return (
           <ActivityForm
             repo={did}
-            self={actor?.handle ?? did}
-            selfName={actor?.isOrganization ? nameOf(actor) : null}
+            self={handle ?? did}
+            selfName={actor?.isOrganization ? nameOf({ ...actor, handle }) : null}
             places={places}
             cancelHref={activityHref(editing.uri)}
             editing={editing}

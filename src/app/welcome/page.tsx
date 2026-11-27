@@ -19,6 +19,8 @@ const TITLE = "Certified — One account. Your work. Recognized everywhere.";
 const DESCRIPTION =
   "Your profile, your work, and your supporters in one account — recognized on every app in the network, independent of any single platform.";
 
+export const ensureStatic = "prefetch";
+
 export const metadata = pageMetadata({
   absoluteTitle: TITLE,
   description: DESCRIPTION,
