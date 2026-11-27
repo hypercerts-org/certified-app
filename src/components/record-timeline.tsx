@@ -6,6 +6,7 @@
 // show; the rest fold away.
 
 import { CalendarClock } from "lucide-react";
+import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { badgeHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
@@ -189,6 +190,7 @@ export async function RecordTimeline({
   /** Nothing at all when empty: the page already shows something (an activity's text). */
   emptyless?: boolean;
 }) {
+  await connection(); // per visit: not in the cached page
   // The owner's handle (for the links to it) alongside the timeline: a card
   // as the API has it comes without one.
   const [items, ownerHandle] = await Promise.all([

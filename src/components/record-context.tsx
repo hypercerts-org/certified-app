@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 // What others add to a project or an activity, as its timeline's posts show
 // it (record-timeline): an evaluation, a measurement, an update or another
 // attachment, each with its files; and, for an activity's side column, the
@@ -78,6 +79,7 @@ function Files({ files }: { files: FileLink[] }) {
 
 /** The projects an activity belongs to, as rows. */
 export async function PartOf({ uri }: { uri: string }) {
+  await connection(); // per visit: not in the cached page
   const projects = await getProjectsWith(uri);
   if (projects.length === 0) return null;
   return (

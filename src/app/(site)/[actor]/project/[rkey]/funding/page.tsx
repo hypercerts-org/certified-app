@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { Funding, FundingSkeleton } from "@/components/funding";
 import { projectFrom } from "@/components/project-page";
@@ -5,6 +6,7 @@ import { projectFrom } from "@/components/project-page";
 async function ProjectFunding({
   params,
 }: Pick<PageProps<"/[actor]/project/[rkey]/funding">, "params">) {
+  await connection(); // per visit: not in the cached page
   const { uri } = await projectFrom(params);
   // Every row is for this project, to its organization: neither is repeated.
   return (

@@ -1,4 +1,5 @@
 import { IdentityLink } from "@hypercerts-org/ui-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { actorHref, identityOf } from "@/components/actor";
 import type { ActorCard } from "@/lib/hypercerts/views";
@@ -20,6 +21,7 @@ export function AuthorLink({ author }: { author: ActorCard }) {
 }
 
 async function AuthorLinkWithHandle({ author }: { author: ActorCard }) {
+  await connection(); // per visit: not in the cached page
   const handle = author.handle ?? (await getHandle(author.did));
   const card = { ...author, handle };
   return <IdentityLink {...identityOf(card)} href={actorHref(card)} />;

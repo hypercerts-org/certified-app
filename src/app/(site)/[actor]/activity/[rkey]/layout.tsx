@@ -15,6 +15,17 @@ import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 // An activity: its header across the top, then (as on a project) the tabs
 // and the open tab on the left, and the side column on the right.
 
+// Prerender one known activity at build time; every other is prerendered on its
+// first visit and cached per URL (ISR), header, tabs and rail included, so a
+// later visit shows them at once. On Vercel a click to one not yet cached
+// waits for that prerender, so it holds only what the API answers quickly:
+// the parts that need outside lookups or slow API filters (the author's
+// handle, figures, place, "Also on", the timeline, every tab's list) call
+// connection() and stream in on each visit (see the profile layout).
+export async function generateStaticParams() {
+  return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey", rkey: "3msindbwqzs2t" }];
+}
+
 export async function generateMetadata({
   params,
 }: LayoutProps<"/[actor]/activity/[rkey]">): Promise<Metadata> {

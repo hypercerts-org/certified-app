@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { activityFrom } from "@/components/activity-page";
 import { Funding, FundingSkeleton } from "@/components/funding";
@@ -5,6 +6,7 @@ import { Funding, FundingSkeleton } from "@/components/funding";
 async function ActivityFunding({
   params,
 }: Pick<PageProps<"/[actor]/activity/[rkey]/funding">, "params">) {
+  await connection(); // per visit: not in the cached page
   const { uri } = await activityFrom(params);
   // Every row is for this activity, to its organization: neither is repeated.
   return (

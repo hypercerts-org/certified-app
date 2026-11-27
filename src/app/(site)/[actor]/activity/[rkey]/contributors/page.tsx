@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { activityFrom, Contributors } from "@/components/activity-page";
 import { Empty } from "@/components/empty";
@@ -9,6 +10,7 @@ async function ActivityContributors({
   params,
 }: Pick<PageProps<"/[actor]/activity/[rkey]/contributors">, "params">) {
   // With their verified handles, for the links to them.
+  await connection(); // per visit: not in the cached page
   const { uri } = await activityFrom(params);
   const activity = await getActivity(uri);
   if (!activity) return null;

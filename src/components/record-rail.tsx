@@ -3,6 +3,7 @@
 // (RecordFacts), as a profile's column has the account's.
 
 import { Card, CopyableId, Heading } from "@hypercerts-org/ui-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { type Stat, StatRow } from "@/components/stat-row";
 import { getFundingSummary, getRecordBadges } from "@/lib/hypercerts/queries";
@@ -22,6 +23,7 @@ export async function RecordFigures({
   /** A project's activities; an activity has none. */
   activities?: number;
 }) {
+  await connection(); // per visit: not in the cached page
   const badges = await getRecordBadges(uri);
   const stats: Stat[] = [];
   if (activities > 0) {

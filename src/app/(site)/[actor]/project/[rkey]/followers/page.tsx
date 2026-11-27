@@ -1,4 +1,5 @@
 import { Text } from "@hypercerts-org/ui-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
 import { projectFrom } from "@/components/project-page";
@@ -9,6 +10,7 @@ const numberFormat = new Intl.NumberFormat("en");
 async function Followers({
   params,
 }: Pick<PageProps<"/[actor]/project/[rkey]/followers">, "params">) {
+  await connection(); // per visit: not in the cached page
   const { uri } = await projectFrom(params);
   const page = await getProjectFollowers(uri);
   return (

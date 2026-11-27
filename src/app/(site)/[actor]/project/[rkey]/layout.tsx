@@ -15,10 +15,16 @@ import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 // A project: its header across the top, then (as on a profile) the tabs and
 // the open tab on the left, and the side column on the right.
 
-// No generateStaticParams: with it, a click to a page not yet cached waits
-// on Vercel for the whole page to be prerendered (every list, every lookup)
-// before anything shows. Without it, the click gets the app shell at once and
-// the page streams in, as on a direct visit. Pages are still cached per URL.
+// Prerender one known project at build time; every other is prerendered on its
+// first visit and cached per URL (ISR), header, tabs and rail included, so a
+// later visit shows them at once. On Vercel a click to one not yet cached
+// waits for that prerender, so it holds only what the API answers quickly:
+// the parts that need outside lookups or slow API filters (the author's
+// handle, figures, place, "Also on", the timeline, every tab's list) call
+// connection() and stream in on each visit (see the profile layout).
+export async function generateStaticParams() {
+  return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey", rkey: "3msind56wn22t" }];
+}
 
 export async function generateMetadata({
   params,

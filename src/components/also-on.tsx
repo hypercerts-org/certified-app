@@ -5,6 +5,7 @@
 // a page for it.
 
 import { ArrowUpRight } from "lucide-react";
+import { connection } from "next/server";
 import { useId } from "react";
 import { type AlsoOnLink, getAlsoOn } from "@/lib/also-on";
 
@@ -42,5 +43,6 @@ export function AlsoOnRow({ links, what }: { links: AlsoOnLink[]; what: string }
 
 /** The apps that also show `subject` (a DID or a project's URI); `what` names it: "project". */
 export async function AlsoOn({ subject, what }: { subject: string; what: string }) {
+  await connection(); // per visit: not in the cached page
   return <AlsoOnRow links={await getAlsoOn(subject)} what={what} />;
 }

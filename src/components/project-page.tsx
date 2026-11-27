@@ -6,6 +6,7 @@
 
 import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { AlsoOn } from "@/components/also-on";
 import { AuthorLink } from "@/components/author-link";
@@ -53,6 +54,7 @@ export async function projectFrom(params: ProjectParams) {
 
 /** "158 followers", beside the author. */
 async function FollowerCount({ uri }: { uri: string }) {
+  await connection(); // per visit: not in the cached page
   const { total } = await getProjectFollowers(uri);
   if (total === 0) return null;
   return (
@@ -117,6 +119,7 @@ async function ProjectLocation({
   title: string;
   imageUrl: string | null;
 }) {
+  await connection(); // per visit: not in the cached page
   const place = await getPlace(locationUri);
   if (!place) return null;
   return <LocationCard place={place} who={title} imageUrl={imageUrl} />;
