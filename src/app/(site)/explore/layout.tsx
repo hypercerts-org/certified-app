@@ -3,7 +3,10 @@ import { ExploreTabs, ExploreTabsSkeleton } from "@/components/explore-toolbar";
 import { PageHeader } from "@/components/page-title";
 import { pageMetadata } from "@/lib/seo";
 
-export const ensureStatic = "prefetch";
+// Keep default links on a static App Shell while allowing the 4 Explore tabs
+// and sidebar `<Link prefetch>` links to resolve cached `searchParams` results
+// ahead of the click.
+export const ensureStatic = "shell";
 
 export const metadata = pageMetadata({
   title: "Explore",

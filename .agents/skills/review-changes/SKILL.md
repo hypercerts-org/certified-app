@@ -192,8 +192,9 @@ Before judging a Next.js API, read its guide in
   `variant="text" lines=` used as a page's placeholder: it is a finding.
 - C10. Every route exports `ensureStatic`: `"prefetch"` on public routes
   (with `generateStaticParams` on dynamic public routes) and `"shell"` on
-  authenticated routes (`workspace`, `settings`, `edit`), so `SiteLayout`'s
-  cookie reads never force `RuntimeShell` (`p=3`) server renders for links.
+  `searchParams`-driven tabbed routes (`/explore/*`) and authenticated routes
+  (`workspace`, `settings`, `edit`), so `SiteLayout`'s cookie reads never force
+  `RuntimeShell` (`p=3`) server renders for default links.
   In-place URL updates (DID-to-handle canonicalization, view-mode switches)
   use `window.history.replaceState(null, "", url)`, not `router.replace`.
 - C11. Headers, layouts and non-location views never call `getActor()`
