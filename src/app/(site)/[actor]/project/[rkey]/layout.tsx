@@ -15,9 +15,10 @@ import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 // A project: its header across the top, then (as on a profile) the tabs and
 // the open tab on the left, and the side column on the right.
 
-export async function generateStaticParams() {
-  return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey", rkey: "3msind56wn22t" }];
-}
+// No generateStaticParams: with it, a click to a page not yet cached waits
+// on Vercel for the whole page to be prerendered (every list, every lookup)
+// before anything shows. Without it, the click gets the app shell at once and
+// the page streams in, as on a direct visit. Pages are still cached per URL.
 
 export async function generateMetadata({
   params,

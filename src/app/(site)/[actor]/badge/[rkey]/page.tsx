@@ -4,11 +4,10 @@ import { BadgePage, BadgePageSkeleton, badgeFrom } from "@/components/badge-page
 import { nameOf } from "@/lib/hypercerts/views";
 import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 
-// Prerender one known badge at build time; every other badge gets the app
-// shell first and is then rendered and cached per URL.
-export async function generateStaticParams() {
-  return [{ actor: "did:plc:ipcx4wzsuz3c6nkqgas75rxw", rkey: "3mz62dbgyff2t" }];
-}
+// No generateStaticParams: with it, a click to a page not yet cached waits
+// on Vercel for the whole page to be prerendered (every list, every lookup)
+// before anything shows. Without it, the click gets the app shell at once and
+// the page streams in, as on a direct visit. Pages are still cached per URL.
 
 export async function generateMetadata({
   params,

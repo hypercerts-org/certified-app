@@ -17,11 +17,10 @@ import { canonicalProfileBase, profileBase } from "@/lib/profile-route";
 // outside lookups, up to a second for an account nobody opened lately. The
 // parts that show the handle or the place stream in on their own.
 
-// Prerender one known organization at build time; every other actor gets the
-// app shell first and is then rendered and cached per URL (ISR).
-export async function generateStaticParams() {
-  return [{ actor: "together4trees-ken.certified.one" }];
-}
+// No generateStaticParams: with it, a click to a page not yet cached waits
+// on Vercel for the whole page to be prerendered (every list, every lookup)
+// before anything shows. Without it, the click gets the app shell at once and
+// the page streams in, as on a direct visit. Pages are still cached per URL.
 
 async function Header({ params }: { params: Promise<{ actor: string }> }) {
   const id = (await params).actor;
