@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { FollowingLists } from "@/components/follow-lists";
 import { PeopleListSkeleton } from "@/components/people-list";
@@ -15,6 +16,8 @@ import { profileActor } from "@/lib/profile-route";
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/following">): Promise<Metadata> {
+  // The title needs the checked handle: on each visit, not in the cached page.
+  await connection();
   const actor = await getActor(decodeURIComponent((await params).actor));
   return { title: actor ? `${nameOf(actor)}: Following` : "Not found" };
 }

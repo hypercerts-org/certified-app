@@ -3,6 +3,7 @@
 // identifiers. Like the intro beside a Facebook profile's feed.
 
 import { Card, CopyableId, Heading, Skeleton } from "@hypercerts-org/ui-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { skeletonSlots } from "@/components/cards";
 import { LocationCard } from "@/components/location-card";
@@ -30,6 +31,7 @@ const countLabel = (count: number, more: boolean) =>
  * funding it received. Only those it has; no card when it has none.
  */
 async function Figures({ did, base }: { did: string; base: string }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const [given, { accepted }, issued, { lists, more: moreLists }] = await Promise.all([
     listEndorsements(did, "given"),
     getBadges(did),
@@ -101,6 +103,7 @@ async function Received({ did, base }: { did: string; base: string }) {
 
 /** Where an organization is: its place takes a geocoder, so it comes on its own. */
 async function Location({ actor }: { actor: ActorDetail }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const place = await getActorPlace(actor.did);
   return place ? (
     <LocationCard place={place} who={nameOf(actor)} imageUrl={actor.avatarUrl} />
@@ -109,6 +112,7 @@ async function Location({ actor }: { actor: ActorDetail }) {
 
 /** The handle, once it is checked both ways (its DID document and its domain). */
 async function HandleFact({ did }: { did: string }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const handle = await getHandle(did);
   if (!handle) return null;
   return (

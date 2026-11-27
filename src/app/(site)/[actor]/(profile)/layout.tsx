@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { ProfileAddress } from "@/components/profile-address";
@@ -17,10 +18,17 @@ import { canonicalProfileBase, profileBase } from "@/lib/profile-route";
 // outside lookups, up to a second for an account nobody opened lately. The
 // parts that show the handle or the place stream in on their own.
 
-// No generateStaticParams: with it, a click to a page not yet cached waits
-// on Vercel for the whole page to be prerendered (every list, every lookup)
-// before anything shows. Without it, the click gets the app shell at once and
-// the page streams in, as on a direct visit. Pages are still cached per URL.
+// Prerender one known organization at build time; every other profile is
+// prerendered on its first visit and cached per URL (ISR), header, tabs and
+// rail included, so a later visit shows them at once. On Vercel a click to a
+// profile not yet cached waits for that prerender, so it holds only what the
+// API answers quickly. Whatever needs outside lookups or slow API filters
+// (handle checks, the place, figures, endorsers, follow counts, "Also on" and
+// every tab's content) calls connection(): it is left out of the cached page
+// and streams in on each visit, from the per-server data cache.
+export async function generateStaticParams() {
+  return [{ actor: "together4trees-ken.certified.one" }];
+}
 
 async function Header({ params }: { params: Promise<{ actor: string }> }) {
   const id = (await params).actor;
@@ -45,6 +53,7 @@ async function Rail({ params }: { params: Promise<{ actor: string }> }) {
 /** Moves the page to the profile's own address, once its handle is checked. */
 async function Address({ params }: { params: Promise<{ actor: string }> }) {
   const id = (await params).actor;
+  await connection(); // the handle check: on each visit, not in the cached page
   const to = await canonicalProfileBase(id);
   return to ? <ProfileAddress from={profileBase(id)} to={to} /> : null;
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { getActorCore } from "@/lib/hypercerts/queries";
 import type { ActorDetail } from "@/lib/hypercerts/views";
 import { checkHandle } from "@/lib/identity";
@@ -22,13 +23,16 @@ export function profileBase(param: string): string {
 }
 
 /**
- * The account a profile page shows, as the API has it (getActorCore: without
- * its handle and place), or a 404.
+ * The account a profile tab shows, as the API has it (getActorCore: without
+ * its handle and place), or a 404. A tab's content (lists, the timeline,
+ * handle checks) renders on each visit, not in the profile's cached page,
+ * so that page stays quick to prerender (see the profile layout).
  */
 export async function profileActor(
   params: Promise<{ actor: string }>,
 ): Promise<{ actor: ActorDetail; base: string }> {
   const id = decodeURIComponent((await params).actor);
+  await connection();
   const actor = await getActorCore(id);
   if (!actor) notFound();
   return { actor, base: profileBase(id) };

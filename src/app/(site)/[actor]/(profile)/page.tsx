@@ -1,5 +1,6 @@
 import { ExpandableText, Heading, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ProfileFeed, ProfileFeedSkeleton } from "@/components/profile-feed";
 import { getActor, getProfileFeed } from "@/lib/hypercerts/queries";
@@ -16,6 +17,8 @@ import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 // header, so nothing here repeats them.
 
 export async function generateMetadata({ params }: PageProps<"/[actor]">): Promise<Metadata> {
+  // The title needs the checked handle: on each visit, not in the cached page.
+  await connection();
   const actor = await getActor(decodeURIComponent((await params).actor));
   if (!actor) return { title: "Not found", robots: { index: false } };
   const name = nameOf(actor);

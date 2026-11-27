@@ -6,6 +6,7 @@
 
 import { Avatar, AvatarStack, ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Eye, Link2, Mail } from "lucide-react";
+import { connection } from "next/server";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { ActorName, avatarOf } from "@/components/actor";
 import { AlsoOnRow } from "@/components/also-on";
@@ -148,6 +149,7 @@ async function AppsAndLinks({
   what: string;
   links: AccountLink[];
 }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const apps = await getAlsoOn(did);
   const shown = new Set(apps.map((app) => domainOf(app.href)));
   return (
@@ -162,6 +164,7 @@ async function AppsAndLinks({
 
 /** The name, when the profile gives none: the handle, once it is checked; the DID until then. */
 async function HandleName({ actor }: { actor: ActorDetail }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const handle = await getHandle(actor.did);
   return (
     <ProfileName did={actor.did} rendered={actor.profile} fallback={nameOf({ ...actor, handle })} />
@@ -170,6 +173,7 @@ async function HandleName({ actor }: { actor: ActorDetail }) {
 
 /** An organization's place, last on the meta line: it takes a geocoder (getActorPlace). */
 async function PlaceFact({ did, after }: { did: string; after: boolean }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const place = await getActorPlace(did);
   if (!place?.short) return null;
   return (
@@ -387,6 +391,7 @@ function TrustLine({ did, base }: { did: string; base: string }) {
 
 /** Endorsements only when there are some: an absence says nothing here. */
 async function Endorsed({ did, base }: { did: string; base: string }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const { endorsers, more } = await getEndorsers(did);
   if (endorsers.length === 0) return null;
   return (
@@ -399,6 +404,7 @@ async function Endorsed({ did, base }: { did: string; base: string }) {
 
 /** On one line under the endorsements, as staging has it. */
 async function FollowCounts({ did, base }: { did: string; base: string }) {
+  await connection(); // per visit: not in the cached page (profile layout)
   const { followers, following } = await getFollowCounts(did);
   if (followers === 0 && following === 0) return null;
   return (

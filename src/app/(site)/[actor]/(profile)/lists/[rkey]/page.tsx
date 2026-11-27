@@ -2,6 +2,7 @@ import { Heading, Text } from "@hypercerts-org/ui-react";
 import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { IntentLink } from "@/components/intent-link";
 import { ListItemList } from "@/components/list-item-list";
@@ -17,6 +18,8 @@ const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/lists/[rkey]">): Promise<Metadata> {
+  // The title needs the checked handle: on each visit, not in the cached page.
+  await connection();
   const { actor: id, rkey } = await params;
   const actor = await getActor(decodeURIComponent(id));
   const list = actor && RKEY.test(rkey) ? await getList(actor.did, rkey) : null;
