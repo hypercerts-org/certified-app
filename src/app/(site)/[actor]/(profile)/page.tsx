@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { ProfileFeed, ProfileFeedSkeleton } from "@/components/profile-feed";
-import { getActor, getActorCore, getProfileFeed } from "@/lib/hypercerts/queries";
+import { getActorCore, getActorWithHandle, getProfileFeed } from "@/lib/hypercerts/queries";
 import type { ActorCard } from "@/lib/hypercerts/views";
 import { nameOf } from "@/lib/hypercerts/views";
 import { getHandle } from "@/lib/identity";
@@ -19,7 +19,7 @@ import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 export async function generateMetadata({ params }: PageProps<"/[actor]">): Promise<Metadata> {
   // The title needs the checked handle: on each visit, not in the cached page.
   await connection();
-  const actor = await getActor(decodeURIComponent((await params).actor));
+  const actor = await getActorWithHandle(decodeURIComponent((await params).actor));
   if (!actor) return { title: "Not found", robots: { index: false } };
   const name = nameOf(actor);
   const slug = actor.handle ?? actor.did;

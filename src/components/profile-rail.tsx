@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { skeletonSlots } from "@/components/cards";
 import { LocationCard } from "@/components/location-card";
 import { type Stat, StatRow } from "@/components/stat-row";
+import { TileSlot } from "@/components/tile-slot";
 import {
   getActorPlace,
   getBadges,
@@ -147,13 +148,13 @@ export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string 
   const { did } = actor;
   return (
     <>
-      <Suspense fallback={null}>
+      <TileSlot title="In numbers" skeleton={null}>
         <Figures did={did} base={base} />
-      </Suspense>
+      </TileSlot>
       {actor.isOrganization && (
-        <Suspense fallback={null}>
+        <TileSlot title="Location" skeleton={null}>
           <Location actor={actor} />
-        </Suspense>
+        </TileSlot>
       )}
       <Card variant="panel" className="overview-box rail-card">
         <Heading level={2} size="heading">

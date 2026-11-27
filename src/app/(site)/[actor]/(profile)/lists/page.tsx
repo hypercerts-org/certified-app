@@ -1,19 +1,14 @@
 import { Text } from "@hypercerts-org/ui-react";
 import { ListChecks } from "lucide-react";
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { Empty } from "@/components/empty";
 import { ListGroups, ListGroupsSkeleton } from "@/components/profile-lists";
-import { getActor, listLists } from "@/lib/hypercerts/queries";
-import { nameOf } from "@/lib/hypercerts/views";
-import { profileActor } from "@/lib/profile-route";
+import { listLists } from "@/lib/hypercerts/queries";
+import { profileActor, profileTabMetadata } from "@/lib/profile-route";
 
-export async function generateMetadata({ params }: PageProps<"/[actor]/lists">): Promise<Metadata> {
-  // The title needs the checked handle: on each visit, not in the cached page.
-  await connection();
-  const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${nameOf(actor)}: Lists` : "Not found" };
+export function generateMetadata({ params }: PageProps<"/[actor]/lists">): Promise<Metadata> {
+  return profileTabMetadata(params, "Lists");
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/lists">, "params">) {

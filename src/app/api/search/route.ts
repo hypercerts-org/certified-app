@@ -3,7 +3,7 @@ import {
   exploreAccounts,
   exploreActivities,
   exploreProjects,
-  getActor,
+  getActorWithHandle,
 } from "@/lib/hypercerts/queries";
 import { nameOf } from "@/lib/hypercerts/views";
 import { logError } from "@/lib/log";
@@ -91,7 +91,7 @@ async function searchActors(q: string, limit: number): Promise<SearchActorHit[]>
   const cleaned = q.replace(/^@/, "").trim();
   const [direct, certifiedPage, bsky] = await Promise.all([
     isDid(cleaned) || isHandle(cleaned)
-      ? getActor(cleaned).catch((err) => {
+      ? getActorWithHandle(cleaned).catch((err) => {
           logError("[search] direct actor lookup failed", err);
           return null;
         })
@@ -224,7 +224,7 @@ export async function GET(request: NextRequest) {
           title: nameOf(a),
           meta: a.handle && nameOf(a) !== `@${a.handle}` ? `@${a.handle}` : null,
           imageUrl: a.avatarUrl,
-          round: true,
+          round: !a.isOrganization,
         }),
       ),
       // Bluesky's search also matches bios, loosely: only accounts whose

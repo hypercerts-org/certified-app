@@ -19,11 +19,9 @@ import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { TileSlot } from "@/components/tile-slot";
 import { didOfSegment, getActivityRecord } from "@/lib/hypercerts/queries";
 import type { Contributor } from "@/lib/hypercerts/views";
+import { isRkey } from "@/lib/validate";
 
 export type ActivityParams = Promise<{ actor: string; rkey: string }>;
-
-/** A record key as AT Protocol allows it; anything else is no activity. */
-const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
 
 /**
  * The activity these params name, and its pages' base address; else a 404.
@@ -33,7 +31,7 @@ const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
  */
 export async function activityFrom(params: ActivityParams) {
   const { actor: id, rkey } = await params;
-  if (!RKEY.test(rkey)) notFound();
+  if (!isRkey(rkey)) notFound();
   // The route accepts a handle or DID; the record's URI needs the DID, which
   // a DID in the URL already is.
   const did = await didOfSegment(decodeURIComponent(id));

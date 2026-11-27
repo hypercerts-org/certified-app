@@ -1,5 +1,6 @@
-// The Hypercerts SDK, for the writes it covers (follows, activities). It takes
-// the signed-in session as is; organizations' writes go through CGS.
+// The Hypercerts SDK context and write helpers (activities, projects,
+// organizations, follows, badges, likes, lists, blobs, locations). Takes the
+// signed-in session as is; organizations' writes go through CGS.
 import "server-only";
 
 import { Client, type l } from "@atproto/lex";

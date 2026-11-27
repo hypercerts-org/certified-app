@@ -1,6 +1,7 @@
-// Every write the app makes, the counterpart of ./queries for reads. Callers
-// authenticate and pass a Repository. When the Hypercerts SDK ships its full
-// update/delete layer, these bodies will be replaced by SDK calls.
+// Stopgap repository writes for update/delete operations not yet in
+// @hypercerts-org/sdk (profile/organization updates, list edits/deletes,
+// badge-award deletes). Callers authenticate and pass a Repository. When the
+// SDK ships its full update/delete layer, these bodies will be removed.
 import "server-only";
 
 import { extractPdsUrl } from "@atproto/did";

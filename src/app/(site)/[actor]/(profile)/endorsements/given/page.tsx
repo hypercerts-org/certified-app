@@ -1,20 +1,15 @@
 import { ThumbsUp } from "lucide-react";
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
-import { getActor, getEndorsements, listEndorsements } from "@/lib/hypercerts/queries";
-import { nameOf } from "@/lib/hypercerts/views";
-import { profileActor } from "@/lib/profile-route";
+import { getEndorsements, listEndorsements } from "@/lib/hypercerts/queries";
+import { profileActor, profileTabMetadata } from "@/lib/profile-route";
 
-export async function generateMetadata({
+export function generateMetadata({
   params,
 }: PageProps<"/[actor]/endorsements/given">): Promise<Metadata> {
-  // The title needs the checked handle: on each visit, not in the cached page.
-  await connection();
-  const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${nameOf(actor)}: Endorsements given` : "Not found" };
+  return profileTabMetadata(params, "Endorsements given");
 }
 
 const numberFormat = new Intl.NumberFormat("en");

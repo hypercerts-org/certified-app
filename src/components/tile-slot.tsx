@@ -34,13 +34,15 @@ export function TileSlot({
   children,
 }: {
   title: string;
-  /** The tile's content while it loads (the component's own skeleton). */
+  /** The tile's content while it loads, or null to render nothing until ready. */
   skeleton: ReactNode;
   children: ReactNode;
 }) {
   return (
     <TileBoundary title={title}>
-      <Suspense fallback={<TileSkeleton title={title}>{skeleton}</TileSkeleton>}>
+      <Suspense
+        fallback={skeleton === null ? null : <TileSkeleton title={title}>{skeleton}</TileSkeleton>}
+      >
         {children}
       </Suspense>
     </TileBoundary>

@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
-import { getActor, getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
-import { nameOf } from "@/lib/hypercerts/views";
-import { profileActor } from "@/lib/profile-route";
+import { getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
+import { profileActor, profileTabMetadata } from "@/lib/profile-route";
 
-export async function generateMetadata({
-  params,
-}: PageProps<"/[actor]/followers">): Promise<Metadata> {
-  // The title needs the checked handle: on each visit, not in the cached page.
-  await connection();
-  const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${nameOf(actor)}: Followers` : "Not found" };
+export function generateMetadata({ params }: PageProps<"/[actor]/followers">): Promise<Metadata> {
+  return profileTabMetadata(params, "Followers");
 }
 
 const numberFormat = new Intl.NumberFormat("en");

@@ -1,4 +1,4 @@
-import { Text } from "@hypercerts-org/ui-react";
+import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { cache, type ReactNode } from "react";
 import { workspaceHref } from "@/components/cards";
@@ -63,6 +63,17 @@ export async function workspaceDid(params: Promise<{ actor: string }>): Promise<
 /** Whether the workspace is the signed-in account's own (not an organization's). */
 export async function isOwnWorkspace(did: string): Promise<boolean> {
   return (await getUser())?.did === did;
+}
+
+/** Placeholder while `WorkspaceAccess` checks session and membership. */
+export function WorkspaceContentSkeleton() {
+  return (
+    <div className="stack" aria-hidden>
+      <Skeleton variant="line" className="skeleton-heading" />
+      <Skeleton variant="line" className="skeleton-meta" />
+      <Skeleton variant="box" className="skeleton-rail" />
+    </div>
+  );
 }
 
 /** The workspace layout's gate: its pages, or what to do instead. */

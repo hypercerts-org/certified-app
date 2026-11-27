@@ -1,8 +1,11 @@
-import { Skeleton } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { UnclaimedBadgesPill } from "@/components/unclaimed-badges-pill";
-import { isOwnWorkspace, WorkspaceAccess } from "@/components/workspace-access";
+import {
+  isOwnWorkspace,
+  WorkspaceAccess,
+  WorkspaceContentSkeleton,
+} from "@/components/workspace-access";
 import { WorkspaceNav, WorkspaceNavView } from "@/components/workspace-nav";
 import { groupSettingsHref } from "@/lib/routes";
 import { isDid } from "@/lib/validate";
@@ -12,9 +15,10 @@ import { isDid } from "@/lib/validate";
 export const ensureStatic = "shell";
 
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
+  const raw = (await params).actor;
   let did = "";
   try {
-    did = decodeURIComponent((await params).actor);
+    did = decodeURIComponent(raw);
   } catch {
     return <WorkspaceNavView overview="/workspace" />;
   }
@@ -37,9 +41,9 @@ async function Nav({ params }: { params: Promise<{ actor: string }> }) {
 }
 
 /**
- * A workspace: its sections in a side list, beside the open one. Who may
- * open it is checked here, once, not by each page: the layout stays while
- * you move between its pages (workspace-access.tsx).
+ * A workspace: its sections in a side list, beside the open one. The layout
+ * shows why a workspace can't be opened; each page and nested layout checks
+ * access independently via `workspaceDid` (defense in depth).
  */
 export default function WorkspaceLayout({ children, params }: LayoutProps<"/[actor]/workspace">) {
   return (
@@ -48,14 +52,7 @@ export default function WorkspaceLayout({ children, params }: LayoutProps<"/[act
         <Nav params={params} />
       </Suspense>
       <div className="workspace-content">
-        <Suspense
-          fallback={
-            <div className="stack" aria-hidden>
-              <Skeleton variant="line" className="skeleton-heading" />
-              <Skeleton variant="text" lines={3} />
-            </div>
-          }
-        >
+        <Suspense fallback={<WorkspaceContentSkeleton />}>
           <WorkspaceAccess params={params}>{children}</WorkspaceAccess>
         </Suspense>
       </div>

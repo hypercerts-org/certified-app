@@ -49,7 +49,12 @@ function RowPicture({ item }: { item: Item }) {
   if (item.kind === "account") {
     return (
       <Avatar
-        {...avatarOf({ handle: null, displayName: item.title, avatarUrl: item.imageUrl })}
+        {...avatarOf({
+          handle: null,
+          displayName: item.title,
+          avatarUrl: item.imageUrl,
+          isOrganization: !item.round,
+        })}
         size="sm"
       />
     );

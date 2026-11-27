@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   exploreAccounts: vi.fn(),
   exploreActivities: vi.fn(),
   exploreProjects: vi.fn(),
-  getActor: vi.fn(),
+  getActorWithHandle: vi.fn(),
   logError: vi.fn(),
 }));
 
@@ -13,7 +13,7 @@ vi.mock("@/lib/hypercerts/queries", () => ({
   exploreAccounts: mocks.exploreAccounts,
   exploreActivities: mocks.exploreActivities,
   exploreProjects: mocks.exploreProjects,
-  getActor: mocks.getActor,
+  getActorWithHandle: mocks.getActorWithHandle,
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
@@ -26,7 +26,7 @@ beforeEach(() => {
   mocks.exploreActivities.mockResolvedValue({ items: [] });
   mocks.exploreProjects.mockResolvedValue({ items: [] });
   mocks.exploreAccounts.mockResolvedValue({ items: [], cursor: null });
-  mocks.getActor.mockResolvedValue(null);
+  mocks.getActorWithHandle.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -48,7 +48,7 @@ describe("GET /api/search", () => {
   it("handles scope=actors by deduping direct/Certified/Bluesky hits and sanitizing Bluesky avatars", async () => {
     const aliceDid = "did:plc:ewvi7nxzyoun6zhxrhs64oiz";
     const bskyDid = "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb";
-    mocks.getActor.mockResolvedValueOnce({
+    mocks.getActorWithHandle.mockResolvedValueOnce({
       did: aliceDid,
       handle: "alice.certified.one",
       displayName: "Alice",
@@ -129,5 +129,38 @@ describe("GET /api/search", () => {
     expect(body.activities).toEqual([]);
     expect(body.projects.map((p) => p.title)).toEqual(["Solar Microgrid"]);
     expect(mocks.logError).toHaveBeenCalled();
+  });
+
+  it("marks organization accounts as square (round: false) and people as round in search rows", async () => {
+    mocks.exploreAccounts.mockResolvedValueOnce({
+      items: [
+        {
+          did: "did:plc:org111111111111111111111",
+          handle: "trees.certified.one",
+          displayName: "Trees Org",
+          description: null,
+          avatarUrl: "https://cdn.example/org.jpg",
+          isOrganization: true,
+        },
+        {
+          did: "did:plc:per222222222222222222222",
+          handle: "ada.certified.one",
+          displayName: "Ada",
+          description: null,
+          avatarUrl: "https://cdn.example/ada.jpg",
+          isOrganization: false,
+        },
+      ],
+      cursor: null,
+    });
+    globalThis.fetch = vi.fn(async () => Response.json({ actors: [] })) as unknown as typeof fetch;
+
+    const res = await GET(new NextRequest("http://localhost:3000/api/search?q=a"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { accounts: Array<{ id: string; round: boolean }> };
+    expect(body.accounts).toEqual([
+      expect.objectContaining({ id: "did:plc:per222222222222222222222", round: true }),
+      expect.objectContaining({ id: "did:plc:org111111111111111111111", round: false }),
+    ]);
   });
 });

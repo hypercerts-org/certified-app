@@ -26,11 +26,9 @@ import {
   getProjectRecord,
 } from "@/lib/hypercerts/queries";
 import { leadOf } from "@/lib/rich-text";
+import { isRkey } from "@/lib/validate";
 
 export type ProjectParams = Promise<{ actor: string; rkey: string }>;
-
-/** A record key as AT Protocol allows it; anything else is no project. */
-const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
 
 const numberFormat = new Intl.NumberFormat("en");
 
@@ -41,7 +39,7 @@ const numberFormat = new Intl.NumberFormat("en");
  */
 export async function projectFrom(params: ProjectParams) {
   const { actor: id, rkey } = await params;
-  if (!RKEY.test(rkey)) notFound();
+  if (!isRkey(rkey)) notFound();
   // The route accepts a handle or DID; the collection URI needs the DID,
   // which a DID in the URL already is.
   const did = await didOfSegment(decodeURIComponent(id));

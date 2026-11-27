@@ -16,19 +16,17 @@ import { PeopleListSkeleton } from "@/components/people-list";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
 import { didOfSegment, getBadge, listBadgeHolders } from "@/lib/hypercerts/queries";
 import type { BadgeDetail } from "@/lib/hypercerts/views";
+import { isRkey } from "@/lib/validate";
 
 export type BadgeParams = Promise<{ actor: string; rkey: string }>;
 type Which = "accepted" | "awaiting";
-
-/** A record key as AT Protocol allows it; anything else is no badge. */
-const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
 
 const numberFormat = new Intl.NumberFormat("en");
 
 /** The badge at these params, or a 404. Shared with the pages' titles. */
 export async function badgeFrom(params: BadgeParams) {
   const { actor: id, rkey } = await params;
-  if (!RKEY.test(rkey)) notFound();
+  if (!isRkey(rkey)) notFound();
   // A handle or DID in the URL; the definition's URI needs the DID.
   const did = await didOfSegment(decodeURIComponent(id));
   if (!did) notFound();

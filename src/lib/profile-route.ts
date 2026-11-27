@@ -1,9 +1,10 @@
 import "server-only";
 
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { getActorCore } from "@/lib/hypercerts/queries";
-import type { ActorDetail } from "@/lib/hypercerts/views";
+import { getActorCore, getActorWithHandle } from "@/lib/hypercerts/queries";
+import { type ActorDetail, nameOf } from "@/lib/hypercerts/views";
 import { checkHandle } from "@/lib/identity";
 
 // Profiles live at their handle (`/hypercerts.org`), the address people share.
@@ -36,6 +37,20 @@ export async function profileActor(
   const actor = await getActorCore(id);
   if (!actor) notFound();
   return { actor, base: profileBase(id) };
+}
+
+/**
+ * Page metadata for a profile sub-tab (`"{name}: {section}"`). Calls
+ * `connection()` so the handle check stays out of the cached page, and uses
+ * `getActorWithHandle` (never geocoding).
+ */
+export async function profileTabMetadata(
+  params: Promise<{ actor: string }>,
+  section: string,
+): Promise<Metadata> {
+  await connection();
+  const actor = await getActorWithHandle(decodeURIComponent((await params).actor));
+  return { title: actor ? `${nameOf(actor)}: ${section}` : "Not found" };
 }
 
 /**

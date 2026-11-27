@@ -168,7 +168,9 @@ export async function getActorCore(actor: string): Promise<ActorDetail | null> {
   // Anything else in the URL (a stray /favicon.png, a probe) is no account:
   // answered without an API call or cache tag pollution.
   if (!isDidParam(actor) && !l.isHandleString(actor)) return null;
-  publicData(tags.actor(actor));
+  cacheLife("public");
+  const isDid = actor.startsWith("did:");
+  cacheTag(isDid ? tags.actor(actor) : tags.handle(actor.toLowerCase()));
 
   // getProfile accepts a handle or DID; getOrganization needs the DID and
   // fails for accounts without an organization record (people). An
@@ -177,7 +179,6 @@ export async function getActorCore(actor: string): Promise<ActorDetail | null> {
   // handle, the profile names the DID first.
   const organizationOf = (did: Did) =>
     api.xrpcSafe(app.certified.actor.getOrganization, { params: { actor: did }, ...read() });
-  const isDid = actor.startsWith("did:");
   const byDid = isDid ? organizationOf(actor as Did) : null;
   const profile = await api.xrpcSafe(app.certified.actor.getProfile, {
     params: { actor: actor as l.AtIdentifierString },
@@ -192,9 +193,9 @@ export async function getActorCore(actor: string): Promise<ActorDetail | null> {
       ? (actor as Did)
       : ((await getDid(actor)) as Did | null);
   if (!did) return null;
-  // Tagged by DID too, whatever the URL said: a profile save expires
-  // tags.actor(did), and the page at /{handle} must go with it.
-  if (actor !== did) cacheTag(tags.actor(did));
+  // Always tag by DID so a profile save (which expires tags.actor(did)) clears
+  // pages opened by handle too.
+  if (!isDid) cacheTag(tags.actor(did));
   const organization = await (byDid ?? organizationOf(did));
 
   if (organization.success) return toActorDetail(organization.body.actor);
@@ -229,9 +230,21 @@ export async function getActorPlace(did: string): Promise<Place | null> {
 }
 
 /**
+ * The account with its verified handle, skipping geocoding (`getActorPlace`).
+ * Prefer this over `getActor()` whenever `place` is not displayed (metadata,
+ * search, headers, settings, forms).
+ */
+export async function getActorWithHandle(actor: string): Promise<ActorDetail | null> {
+  const core = await getActorCore(actor);
+  if (!core) return null;
+  const handle = await getHandle(core.did);
+  return { ...core, handle };
+}
+
+/**
  * The account in full: getActorCore with its verified handle and its place.
- * Not cached itself: its parts are, and a handle check that failed for a
- * moment (null here) must not be kept for an hour.
+ * Only call when `place` is actually needed (e.g. profile edit forms); every
+ * other caller should use `getActorCore` or `getActorWithHandle`.
  */
 export async function getActor(actor: string): Promise<ActorDetail | null> {
   const core = await getActorCore(actor);
@@ -245,9 +258,9 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
 }
 
 /**
- * The indexed version of an account's profile, read past every cache. The
- * write overlay compares its CID with what the user saved to tell whether the
- * index has caught up; a cached answer could confirm nothing.
+ * The indexed version of an account's profile, read past every cache. Save
+ * actions poll this via `waitForIndex` to confirm the index has caught up
+ * before expiring tags; a cached answer could confirm nothing.
  */
 export async function getIndexedProfile(did: string): Promise<ProfileVersion | null> {
   const result = await api.xrpcSafe(app.certified.actor.getProfile, {

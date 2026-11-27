@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { returnPath } from "./validate";
+import { isRkey, returnPath } from "./validate";
+
+describe("isRkey", () => {
+  it("accepts valid AT Protocol record keys and rejects dot segments and invalid characters", () => {
+    expect(isRkey("3msind56wn22t")).toBe(true);
+    expect(isRkey("self")).toBe(true);
+    expect(isRkey("a_b:c~d-e.f")).toBe(true);
+    for (const bad of ["", ".", "..", "a/b", "a b", "x".repeat(513)]) {
+      expect(isRkey(bad)).toBe(false);
+    }
+  });
+});
 
 describe("returnPath", () => {
   it("keeps paths on this site", () => {
