@@ -12,6 +12,7 @@ import { identityOf } from "@/components/actor";
 import { AuthorLink } from "@/components/author-link";
 import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
+import { ViewablePicture } from "@/components/picture-viewer";
 import { ProfileTabsSkeleton, RouteTabs } from "@/components/profile-actions";
 import { RecordActions, RecordActionsFallback } from "@/components/record-actions";
 import { PartOf } from "@/components/record-context";
@@ -115,10 +116,10 @@ export async function ActivityHeader({ params }: { params: ActivityParams }) {
         </div>
       </div>
       {activity.imageUrl && (
-        <div className="activity-hero">
+        <ViewablePicture src={activity.imageUrl} className="activity-hero">
           {/* biome-ignore lint/performance/noImgElement: indexed images come from many hosts */}
           <img src={activity.imageUrl} alt="" />
-        </div>
+        </ViewablePicture>
       )}
     </header>
   );

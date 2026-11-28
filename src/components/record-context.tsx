@@ -15,44 +15,29 @@ import {
   Paperclip,
 } from "lucide-react";
 import { actorHref, identityOf } from "@/components/actor";
+import { PictureGrid } from "@/components/picture-viewer";
 import { ProjectRow } from "@/components/records";
 import { RichText } from "@/components/rich-text";
 import { type EvaluationWithEvaluators, getProjectsWith } from "@/lib/hypercerts/queries";
 import type { Attachment, Evaluation, FileLink, Measurement } from "@/lib/hypercerts/views";
 
-/** Pictures shown before the rest fold into "+N". */
-const SHOWN_PICTURES = 6;
-
 /**
- * A record's files: pictures as a grid of thumbnails (each opens the full
- * size), sound files as players, the rest as links; all open in a new tab.
+ * A record's files: pictures as a grid of thumbnails (each opens the
+ * viewer), sound files as players, the rest as links in a new tab.
  */
 function Files({ files }: { files: FileLink[] }) {
   const pictures = files.filter((file) => file.thumbnail);
   const sounds = files.filter((file) => file.audio);
   const links = files.filter((file) => !file.thumbnail && !file.audio);
-  const hidden = pictures.length - SHOWN_PICTURES;
   return (
     <>
       {pictures.length > 0 && (
-        <ul className="context-pictures">
-          {pictures.slice(0, SHOWN_PICTURES).map((file, i) => (
-            <li key={file.href}>
-              <a href={file.href} target="_blank" rel="noopener noreferrer">
-                {/* biome-ignore lint/performance/noImgElement: indexed images come from many hosts */}
-                <img src={file.thumbnail} alt="" loading="lazy" />
-                <span className="visually-hidden">
-                  Picture {i + 1} of {pictures.length} (opens in a new tab)
-                </span>
-                {i === SHOWN_PICTURES - 1 && hidden > 0 && (
-                  <span className="context-pictures-more" aria-hidden>
-                    +{hidden}
-                  </span>
-                )}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <PictureGrid
+          pictures={pictures.map((file) => ({
+            src: file.href,
+            thumbnail: file.thumbnail ?? file.href,
+          }))}
+        />
       )}
       {sounds.map((file) => (
         // biome-ignore lint/a11y/useMediaCaption: field recordings have no speech to caption

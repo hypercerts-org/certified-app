@@ -3108,21 +3108,28 @@ a.explore-account-link:hover .list-item-title {
 
 /* A record's pictures: small thumbnails in a grid, each opening the full
    picture; the last shown counts the rest ("+12"). */
+/* A post's pictures, laid out by how many: one large in its own shape; two
+   or four in two columns; otherwise three, squares, up to six then "+N". */
 .context-pictures {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
-  gap: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+  max-inline-size: 34rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.context-pictures a {
+.context-picture {
   position: relative;
   display: block;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  cursor: zoom-in;
   overflow: hidden;
   aspect-ratio: 1;
-  border-radius: var(--hc-radius-tag);
+  border-radius: var(--hc-radius-control);
   background: var(--hc-surface-tint);
 }
 
@@ -3133,8 +3140,27 @@ a.explore-account-link:hover .list-item-title {
   transition: opacity 150ms ease;
 }
 
-.context-pictures :where(a:hover) img {
+.context-pictures :where(.context-picture:hover) img {
   opacity: 0.85;
+}
+
+.context-pictures:is([data-count="2"], [data-count="4"]) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.context-pictures[data-count="1"] {
+  grid-template-columns: minmax(0, max-content);
+}
+
+.context-pictures[data-count="1"] .context-picture {
+  aspect-ratio: auto;
+}
+
+.context-pictures:where([data-count="1"]) img {
+  inline-size: auto;
+  max-inline-size: 100%;
+  block-size: auto;
+  max-block-size: 22rem;
 }
 
 /* "+12" over the last thumbnail: the picture dimmed under the count. */
@@ -3146,6 +3172,169 @@ a.explore-account-link:hover .list-item-title {
   background: color-mix(in srgb, var(--hc-text-ink) 55%, transparent);
   color: var(--hc-text-on-fill);
   font-weight: var(--hc-weight-strong);
+}
+
+/* A picture that opens the viewer (an activity's hero): the picture is the button. */
+.picture-trigger {
+  display: block;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  cursor: zoom-in;
+}
+
+.picture-trigger:focus-visible,
+.context-picture:focus-visible {
+  outline: 2px solid var(--hc-focus-ring);
+  outline-offset: 2px;
+}
+
+/* The picture viewer (picture-viewer.tsx): the whole screen, in the page's
+   own surface (light or dark with the theme), one picture at a time in a row
+   that snaps. */
+.picture-viewer {
+  position: fixed;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100dvh;
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--hc-surface-page);
+  color: var(--hc-text-ink);
+  opacity: 0;
+  transition:
+    opacity 180ms var(--hc-motion-ease),
+    overlay 180ms allow-discrete,
+    display 180ms allow-discrete;
+}
+
+.picture-viewer[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  opacity: 1;
+}
+
+@starting-style {
+  .picture-viewer[open] {
+    opacity: 0;
+  }
+}
+
+.picture-viewer::backdrop {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picture-viewer {
+    transition: none;
+  }
+}
+
+/* The page under it stays where it is. */
+html:has(.picture-viewer[open]) {
+  overflow: hidden;
+}
+
+.picture-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  padding-block-start: max(var(--space-2), env(safe-area-inset-top));
+}
+
+.picture-count {
+  margin-inline-end: auto;
+  padding-inline-start: var(--space-2);
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.picture-original {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--hc-radius-control);
+  color: var(--hc-text-body);
+  font-size: var(--hc-type-body-sm);
+  text-decoration: none;
+}
+
+.picture-original:hover {
+  background: var(--hc-fill-subtle);
+}
+
+.picture-original:focus-visible {
+  outline: 2px solid var(--hc-focus-ring);
+}
+
+.picture-track {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.picture-track::-webkit-scrollbar {
+  display: none;
+}
+
+.picture-slide {
+  flex: 0 0 100%;
+  display: grid;
+  place-items: center;
+  min-block-size: 0;
+  padding: var(--space-2) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
+  /* The picture fits the slide (cqi, cqb): a tall one as much as a wide one. */
+  container-type: size;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+/* At its own size, up to the screen's: a click beside it closes the viewer. */
+.picture-slide img {
+  max-inline-size: 100cqi;
+  max-block-size: 100cqb;
+  object-fit: contain;
+  border-radius: var(--hc-radius-control);
+  user-select: none;
+  /* Swipes go to the row, pinches to the browser's zoom. */
+  touch-action: pan-x pinch-zoom;
+}
+
+.picture-step {
+  position: fixed;
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  box-shadow: var(--hc-shadow-md);
+}
+
+.picture-step:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.picture-prev {
+  inset-inline-start: var(--space-4);
+}
+
+.picture-next {
+  inset-inline-end: var(--space-4);
+}
+
+/* A touch screen swipes; the arrows are for a mouse and the keyboard. */
+@media (pointer: coarse) {
+  .picture-step {
+    display: none;
+  }
 }
 
 .context-audio {
