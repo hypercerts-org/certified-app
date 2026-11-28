@@ -38,9 +38,9 @@ import { ActorHandle, avatarOf, identityOf } from "@/components/actor";
 import { actorHref, workspaceHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { AddMemberDialog, MemberActions, NewGroupDialog } from "@/components/group-dialogs";
-import { PageTitle } from "@/components/page-title";
 import { ActivityRow, ProjectRow, RecordRowSkeleton } from "@/components/records";
 import { StatRow } from "@/components/stat-row";
+import { WorkspaceTitle } from "@/components/workspace-nav";
 import { APPS } from "@/lib/apps";
 import {
   getActorCore,
@@ -66,7 +66,7 @@ export function WorkspaceOverview({
 }) {
   return (
     <>
-      <PageTitle className="workspace-title">Overview</PageTitle>
+      <WorkspaceTitle>Overview</WorkspaceTitle>
       <div className="overview">
         <div className="overview-main">
           <Suspense fallback={<StatsSkeleton title="Your records" stats={3} rows={3} />}>
@@ -181,7 +181,7 @@ export function OrganizationsSkeleton() {
 export function OverviewSkeleton() {
   return (
     <>
-      <PageTitle className="workspace-title">Overview</PageTitle>
+      <WorkspaceTitle>Overview</WorkspaceTitle>
       <div className="overview">
         <div className="overview-main">
           <StatsSkeleton title="Your records" stats={3} rows={3} />

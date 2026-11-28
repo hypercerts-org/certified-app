@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { PageTitle } from "@/components/page-title";
+import { WorkspaceTitle } from "@/components/workspace-nav";
 
 /**
- * A workspace section's head: its title, then its tab bar (`tabs`, usually
+ * A workspace section's head: its title (below 64rem, the switcher to the
+ * other sections), then its tab bar (`tabs`, usually
  * ProfileTabs streaming in its counts) on the section's hairline, with its
  * main action at the bar's right end when the section has one (Create badge,
  * Endorse someone; see SECTION_ACTION). Every workspace section uses this,
@@ -20,7 +21,7 @@ export function WorkspaceSectionHead({
 }) {
   return (
     <>
-      <PageTitle className="workspace-title">{title}</PageTitle>
+      <WorkspaceTitle>{title}</WorkspaceTitle>
       <div className="workspace-tabbar">
         {tabs}
         {action && <div className="workspace-tabbar-action">{action}</div>}

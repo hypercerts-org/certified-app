@@ -181,10 +181,11 @@ p + p {
   outline-offset: 2px;
 }
 
-/* Touch screens: the header's controls are at least 44px (WCAG 2.5.5); a mouse
-   keeps the compact sizes. */
+/* Touch screens: the header's controls, and the gear beside each account in
+   its menu, are at least 44px (WCAG 2.5.5); a mouse keeps the compact sizes. */
 @media (pointer: coarse) {
-  .site-header-actions :is(a, button) {
+  .site-header-actions :is(a, button),
+  .act-as-settings {
     min-block-size: 2.75rem;
     min-inline-size: 2.75rem;
   }
@@ -2128,9 +2129,8 @@ a.post-amount:hover {
 }
 
 /* A workspace: the open section, with the workspace's sections in the app
-   sidebar from 64rem. Narrower, the sections are a row above the page that
-   scrolls sideways (Help and Settings are in the account menu there). The
-   content is a container, so the overview arranges itself by the room it
+   sidebar from 64rem. Narrower, the section's title opens them in a sheet.
+   The content is a container, so the overview arranges itself by the room it
    has. */
 .workspace-layout {
   display: flex;
@@ -2147,54 +2147,47 @@ a.post-amount:hover {
   min-inline-size: 0;
 }
 
-.workspace-nav-label,
-.workspace-nav-foot {
-  display: none;
-}
-
-.workspace-nav-list {
-  display: flex;
+/* Below 64rem the title is the button that opens the sections
+   (workspace-nav.tsx): the title's own type, with a chevron after it. From
+   64rem the sidebar lists them and the title is text. */
+.workspace-switch {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-1);
+  max-inline-size: 100%;
   margin: 0;
   padding: 0;
-  overflow-x: auto;
-  list-style: none;
-}
-
-.workspace-nav-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  inline-size: 100%;
-  min-block-size: 2.75rem;
-  padding-inline: var(--space-3);
   border: 0;
   border-radius: var(--hc-radius-control);
   background: none;
-  color: var(--hc-text-ink);
+  color: inherit;
   font: inherit;
+  letter-spacing: inherit;
   text-align: start;
-  text-decoration: none;
-  white-space: nowrap;
   cursor: pointer;
 }
 
-a.workspace-nav-item:hover,
-button.workspace-nav-item:hover,
-.workspace-nav-item[aria-current="page"] {
-  background: var(--hc-fill-subtle);
+.workspace-switch-icon {
+  flex: none;
+  color: var(--hc-text-muted);
 }
 
-/* Not built yet: shown dimmed, inert. */
-.workspace-nav-item[aria-disabled="true"] {
-  color: var(--hc-text-muted);
-  opacity: 0.55;
-  cursor: default;
+.workspace-switch:focus-visible {
+  outline: 2px solid var(--hc-focus-ring);
+  outline-offset: 2px;
+}
+
+.workspace-title-text {
+  display: none;
 }
 
 @media (min-width: 64rem) {
-  .workspace-nav {
+  .workspace-switch {
     display: none;
+  }
+
+  .workspace-title-text {
+    display: inline;
   }
 
   /* The workspace uses the width beside the sidebar, not the Container's:
@@ -2505,7 +2498,6 @@ button.sidebar-item:hover,
 }
 
 @media (forced-colors: active) {
-  .workspace-nav-item[aria-current="page"],
   .sidebar-item[aria-current="page"] {
     text-decoration: underline;
   }
@@ -3894,6 +3886,16 @@ a.badge-title:hover {
   margin-inline-start: auto;
 }
 
+/* Narrow (a phone): the action goes on its own line above the tabs, so the
+   tabs keep the whole width instead of scrolling under it. */
+@container workspace (width < 40rem) {
+  .workspace-tabbar-action {
+    order: -1;
+    flex-basis: 100%;
+    margin-inline-start: 0;
+  }
+}
+
 .endorsement-row-end {
   display: flex;
   flex: none;
@@ -3960,13 +3962,12 @@ a.badge-title:hover {
   color: var(--hc-text-muted);
 }
 
-:is(.sidebar-item, .workspace-nav-item):has(> .link-pending[data-pending]) {
+.sidebar-item:has(> .link-pending[data-pending]) {
   background: var(--hc-fill-subtle);
   font-weight: var(--hc-weight-strong);
 }
 
-:is(.app-sidebar, .workspace-nav):has(.link-pending[data-pending])
-  :is(.sidebar-item, .workspace-nav-item)[aria-current="page"] {
+.app-sidebar:has(.link-pending[data-pending]) .sidebar-item[aria-current="page"] {
   background: none;
   font-weight: inherit;
 }
@@ -4118,6 +4119,18 @@ a.badge-title:hover {
 
   .explore-age {
     inline-size: auto;
+  }
+}
+
+/* Phone width: with the avatar and the age at its end, one line left a few
+   words of the title; it takes two lines instead. */
+@container explore (inline-size < 30rem) {
+  .explore-row .record-row-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
   }
 }
 
